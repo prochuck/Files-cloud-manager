@@ -13,13 +13,13 @@ namespace Files_cloud_manager.Server.Domain
         public DbSet<Folder> Folders { get; set; }
 
 
-        public AppDBContext(DbContextOptions options) : base(options)
+        public AppDBContext(DbContextOptions options,IHashService hashService) : base(options)
         {
             if (Database.EnsureCreated())
             {
                 Roles.Add(new Role() { RoleName = "Admin" });
                 Roles.Add(new Role() { RoleName = "User" });
-                Users.Add(new User() { RoleId = 1, Login = "admin", PasswordHash = "123", UserFoldersPath = "123" });
+                Users.Add(new User() { RoleId = 1, Login = "admin", PasswordHash = hashService.GetHash("123"), UserFoldersPath = "123" });
                 this.SaveChanges();
             }
             this.SaveChanges();
