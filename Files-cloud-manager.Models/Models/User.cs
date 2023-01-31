@@ -17,7 +17,7 @@ namespace Files_cloud_manager.Server.Models
         public string PasswordHash { get; set; }
         [Required]
         public string UserFoldersPath { get; set; }
-        public List<Folder> Folders { get; set; }
+        public List<FileInfoGroup> Folders { get; set; }
 
         [Required]
         [ForeignKey(nameof(Role))]

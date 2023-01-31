@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Files_cloud_manager.Server.Models
 {
-    public class File
+    public class FileInfo
     {
         [Key]
         public int Id { get; set; }
@@ -17,7 +17,7 @@ namespace Files_cloud_manager.Server.Models
         [Required]
         [ForeignKey(nameof(Folder))]
         public int FolderId { get; set; }
-        public Folder Folder { get; set; }
+        public FileInfoGroup Folder { get; set; }
 
     }
 }
