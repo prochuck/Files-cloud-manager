@@ -44,7 +44,5 @@ namespace Files_cloud_manager.Server.Domain
         {
             DBset.Update(item);
         }
-
-
     }
 }

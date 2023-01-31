@@ -7,20 +7,20 @@ namespace Files_cloud_manager.Server.Domain
         private AppDBContext _context;
         public IUserRepository UserRepository { get; }
         public IRoleRepository RoleRepository { get; }
-        public IFileRepository FileRepository { get; }
-        public IFolderRepostiory FolderRepostiory { get; }
+        public IFileInfoRepository FileInfoRepository { get; }
+        public IFileInfoGroupRepostiory FileInfoGroupRepostiory { get; }
 
         public UnitOfWork(AppDBContext context,
             IUserRepository userRepository,
             IRoleRepository roleRepository,
-            IFileRepository fileRepository,
-            IFolderRepostiory folderRepostiory)
+            IFileInfoRepository fileInfoRepository,
+            IFileInfoGroupRepostiory fileInfoGroupRepostiory)
         {
             _context = context;
             UserRepository = userRepository;
             RoleRepository = roleRepository;
-            FileRepository = fileRepository;
-            FolderRepostiory = folderRepostiory;
+            FileInfoRepository = fileInfoRepository;
+            FileInfoGroupRepostiory = fileInfoGroupRepostiory;
         }
 
 

@@ -2,7 +2,7 @@
 
 namespace Files_cloud_manager.Server.Domain.Interfaces
 {
-    public interface IFolderRepostiory : IBaseRepository<Folder>
+    public interface IFileInfoGroupRepostiory : IBaseRepository<FileInfoGroup>
     {
     }
 }

@@ -1,7 +1,7 @@
 ﻿using Files_cloud_manager.Server.Models;
 using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using File = Files_cloud_manager.Server.Models.File;
+using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
 
 namespace Files_cloud_manager.Server.Domain
 {
@@ -9,8 +9,8 @@ namespace Files_cloud_manager.Server.Domain
     {
         public DbSet<Role> Roles { get; set; }
         public DbSet<User> Users { get; set; }
-        public DbSet<File> Files { get; set; }
-        public DbSet<Folder> Folders { get; set; }
+        public DbSet<FileInfo> FileInfos { get; set; }
+        public DbSet<FileInfoGroup> FilesInfoGroups { get; set; }
 
 
         public AppDBContext(DbContextOptions options,IHashService hashService) : base(options)

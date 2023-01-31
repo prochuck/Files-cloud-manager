@@ -2,8 +2,8 @@
 {
     public interface IUnitOfWork
     {
-        IFileRepository FileRepository { get; }
-        IFolderRepostiory FolderRepostiory { get; }
+        IFileInfoRepository FileInfoRepository { get; }
+        IFileInfoGroupRepostiory FileInfoGroupRepostiory { get; }
         IRoleRepository RoleRepository { get; }
         IUserRepository UserRepository { get; }
 

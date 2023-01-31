@@ -14,8 +14,8 @@ builder.Services.AddDbContext<AppDBContext>(e => e.UseSqlServer(@"Data Source=(l
 
 builder.Services.AddTransient<IRoleRepository, RoleRepository>();
 builder.Services.AddTransient<IUserRepository, UserRepository>();
-builder.Services.AddTransient<IFileRepository, FileRepository>();
-builder.Services.AddTransient<IFolderRepostiory, FolderRepository>();
+builder.Services.AddTransient<IFileInfoRepository, FileInfoRepository>();
+builder.Services.AddTransient<IFileInfoGroupRepostiory, FileInfoGroupRepository>();
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 builder.Services.AddTransient<IHashService, HashService>();
 
