@@ -23,11 +23,14 @@ namespace Files_cloud_manager.Server.Domain
             {
                 query = query.Where(filter);
             }
-
-            foreach (var item in includeProperties)
+            if (includeProperties is not null)
             {
-                query = query.Include(item);
+                foreach (var item in includeProperties)
+                {
+                    query = query.Include(item);
+                }
             }
+           
 
             return query.ToList();
         }
