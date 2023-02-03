@@ -6,7 +6,7 @@
         IFileInfoGroupRepostiory FileInfoGroupRepostiory { get; }
         IRoleRepository RoleRepository { get; }
         IUserRepository UserRepository { get; }
-
+        public IBaseRepository<T> GetGenericRepository<T>();
         void Save();
     }
 }
