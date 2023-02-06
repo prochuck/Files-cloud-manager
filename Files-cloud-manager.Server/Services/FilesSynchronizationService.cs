@@ -7,7 +7,7 @@ using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
 
 namespace Files_cloud_manager.Server.Services
 {
-    public class FilesSynchronizationService
+    public class FilesSynchronizationService : IFilesSynchronizationService
     {
         /// <summary>
         /// Переделаь под контейнер синхронизации?
@@ -48,7 +48,7 @@ namespace Files_cloud_manager.Server.Services
                 return false;
             }
 
-            string fullPath = $"{_basePath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{filePath}";
+            string fullPath = GetFullPath(filePath);
 
             FileInfo fileInfo;
 
@@ -91,8 +91,8 @@ namespace Files_cloud_manager.Server.Services
                 return false;
             }
 
-            FileInfo fileInfo= _filesInfos[filePath];
-            string fullPath = $"{_basePath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{filePath}";
+            FileInfo fileInfo = _filesInfos[filePath];
+            string fullPath = GetFullPath(filePath);
 
             if (File.Exists(fullPath))
             {
@@ -105,7 +105,27 @@ namespace Files_cloud_manager.Server.Services
             return true;
         }
 
+        public Stream GetFile(string filePath)
+        {
+            if (!_filesInfos.ContainsKey(filePath))
+            {
+                return null;
+            }
 
+            string fullPath = GetFullPath(filePath);
+
+            if (File.Exists(filePath))
+            {
+                return new FileStream(filePath, FileMode.Open);
+            }
+            return null;
+        }
+
+
+        private string GetFullPath(string relativePath)
+        {
+            return $"{_basePath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{relativePath}";
+        }
         private byte[] CreateFileFromStream(Stream originalFileStream, string path)
         {
             _hashService.Initialize();
