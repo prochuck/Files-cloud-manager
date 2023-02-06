@@ -14,7 +14,7 @@ namespace Files_cloud_manager.Server.Models
         [MaxLength(255)]
         public string Login { get; set; }
         [Required]
-        public string PasswordHash { get; set; }
+        public byte[] PasswordHash { get; set; }
         [Required]
         public string UserFoldersPath { get; set; }
         public List<FileInfoGroup> Folders { get; set; }

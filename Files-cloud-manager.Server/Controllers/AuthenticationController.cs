@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Files_cloud_manager.Server.Controllers
 {
@@ -13,18 +15,13 @@ namespace Files_cloud_manager.Server.Controllers
     public class AuthenticationController : Controller
     {
         IUnitOfWork _unitOfWork;
-        IHashService _hashService;
-        public AuthenticationController(IHashService hashService, IUnitOfWork unitOfWork)
+        HashAlgorithm _hashAlgorithm;
+        public AuthenticationController(HashAlgorithm hashAlgorithm, IUnitOfWork unitOfWork)
         {
-            this._hashService = hashService;
+            this._hashAlgorithm = hashAlgorithm;
             this._unitOfWork = unitOfWork;
         }
 
-        [HttpGet]
-        public IActionResult Login()
-        {
-            return View();
-        }
         [HttpPost]
         public async Task<IActionResult> Login(string login, string password, string? ReturnUrl)
         {
@@ -32,7 +29,7 @@ namespace Files_cloud_manager.Server.Controllers
 
             if (!(user is null))
             {
-                if (user.PasswordHash != _hashService.GetHash(password))
+                if (user.PasswordHash != _hashAlgorithm.ComputeHash(password.Select(e=>(byte)e).ToArray()))
                     return View();
                 var claims = new List<Claim> {
                     new Claim(ClaimTypes.Name, user.Login),
@@ -46,24 +43,21 @@ namespace Files_cloud_manager.Server.Controllers
             }
             return View();
         }
-        [HttpGet]
-        public IActionResult Logout()
-        {
-            return View();
-        }
+
         [HttpPost]
         public async Task<IActionResult> Logout(string Void)
         {
             await HttpContext.SignOutAsync();
             return RedirectToAction("Login");
         }
+
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public IActionResult RegisterUser()
         {
             return View();
         }
-        //переделать хэширование
+
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public IActionResult RegisterUser(string login, string password, int roleId)
@@ -80,7 +74,12 @@ namespace Files_cloud_manager.Server.Controllers
             {
                 return BadRequest("Логин занят");
             }
-            _unitOfWork.UserRepository.Create(new User() { Login = login, PasswordHash = _hashService.GetHash(password), RoleId = roleId });
+            _unitOfWork.UserRepository.Create(
+                new User() {
+                    Login = login,
+                    PasswordHash = _hashAlgorithm.ComputeHash(password.Select(e=>(byte)e).ToArray()), 
+                    RoleId = roleId 
+                });
             _unitOfWork.Save();
             return View();
         }
