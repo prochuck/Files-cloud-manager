@@ -1,5 +1,5 @@
 ﻿using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Server.Models;
+using Files_cloud_manager.Models;
 using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
@@ -33,7 +33,7 @@ namespace Files_cloud_manager.Server.Controllers
                     return View();
                 var claims = new List<Claim> {
                     new Claim(ClaimTypes.Name, user.Login),
-                     new Claim("Id", user.Id.ToString()),
+                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Role,user.Role.RoleName)
                 };
                 var claimsIdentity = new ClaimsIdentity(claims, "Cookies");

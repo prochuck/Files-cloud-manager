@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Files_cloud_manager.Server.Models
+namespace Files_cloud_manager.Models
 {
     public class FileInfo
     {
@@ -15,9 +15,9 @@ namespace Files_cloud_manager.Server.Models
         public byte[] Hash { get; set; }
 
         [Required]
-        [ForeignKey(nameof(Folder))]
-        public int FolderId { get; set; }
-        public FileInfoGroup Folder { get; set; }
+        [ForeignKey(nameof(FileInfoGroup))]
+        public int FileInfoGroupId { get; set; }
+        public FileInfoGroup FileInfoGroup { get; set; }
 
     }
 }

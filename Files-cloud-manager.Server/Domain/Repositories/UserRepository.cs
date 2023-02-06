@@ -1,5 +1,5 @@
 ﻿using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Server.Models;
+using Files_cloud_manager.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Files_cloud_manager.Server.Domain

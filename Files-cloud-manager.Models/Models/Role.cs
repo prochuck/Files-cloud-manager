@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Files_cloud_manager.Server.Models
+namespace Files_cloud_manager.Models
 {
     public class Role
     {

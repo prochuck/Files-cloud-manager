@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 
-namespace Files_cloud_manager.Server.Models
+namespace Files_cloud_manager.Models
 {
     [Index(nameof(Login), IsUnique = true)]
     public class User

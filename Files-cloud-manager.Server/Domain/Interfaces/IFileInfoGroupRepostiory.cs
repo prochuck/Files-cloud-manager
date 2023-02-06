@@ -1,4 +1,4 @@
-﻿using Files_cloud_manager.Server.Models;
+﻿using Files_cloud_manager.Models;
 
 namespace Files_cloud_manager.Server.Domain.Interfaces
 {

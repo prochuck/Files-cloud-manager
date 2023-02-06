@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Files_cloud_manager.Server.Models
+namespace Files_cloud_manager.Models
 {
     public class FileInfoGroup
     {

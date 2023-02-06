@@ -1,6 +1,6 @@
 using Files_cloud_manager.Server.Domain;
 using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Server.Models;
+using Files_cloud_manager.Models;
 using Files_cloud_manager.Server.Services;
 using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.DataProtection.Repositories;

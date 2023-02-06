@@ -1,8 +1,8 @@
-﻿using Files_cloud_manager.Server.Models;
+﻿using Files_cloud_manager.Models;
 using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
-using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
+using FileInfo = Files_cloud_manager.Models.FileInfo;
 
 namespace Files_cloud_manager.Server.Domain
 {

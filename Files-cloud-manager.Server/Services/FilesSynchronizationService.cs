@@ -1,9 +1,10 @@
-﻿using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Server.Models;
+﻿using Files_cloud_manager.Models.DTO;
+using Files_cloud_manager.Server.Domain.Interfaces;
+using Files_cloud_manager.Models;
 using Files_cloud_manager.Server.Services.Interfaces;
 using System.IO;
 using System.Security.Cryptography;
-using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
+using FileInfo = Files_cloud_manager.Models.FileInfo;
 
 namespace Files_cloud_manager.Server.Services
 {
@@ -40,7 +41,6 @@ namespace Files_cloud_manager.Server.Services
             _filesInfos = _fileInfoGroup.Files.ToDictionary(e => e.RelativePath);
             return true;
         }
-
         public bool CreateOrUpdateFile(string filePath, Stream originalFileStream)
         {
             if (!_isSyncStarted)
@@ -83,7 +83,6 @@ namespace Files_cloud_manager.Server.Services
             }
             return true;
         }
-
         public bool DeleteFile(string filePath)
         {
             if (!_filesInfos.ContainsKey(filePath))
@@ -104,7 +103,6 @@ namespace Files_cloud_manager.Server.Services
 
             return true;
         }
-
         public Stream GetFile(string filePath)
         {
             if (!_filesInfos.ContainsKey(filePath))
@@ -120,7 +118,10 @@ namespace Files_cloud_manager.Server.Services
             }
             return null;
         }
-
+        public List<FileInfoDTO> GetFiles()
+        {
+            return _fileInfoGroup.Files.Select(e => AutoMapper)
+        }
 
         private string GetFullPath(string relativePath)
         {
@@ -156,11 +157,16 @@ namespace Files_cloud_manager.Server.Services
             return _hashService.Hash;
         }
 
-        public bool EndSynchronization(int userId, int folderId)
+        public bool EndSynchronization()
         {
             // todo Добавить фиксацию созданных файлов
+            if (!_isSyncStarted)
+            {
+                return false; 
+            }
 
             _unitOfWork.Save();
+            _isSyncStarted = false;
             return true;
         }
     }

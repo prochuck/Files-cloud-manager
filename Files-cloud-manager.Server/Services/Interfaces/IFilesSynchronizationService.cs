@@ -4,7 +4,7 @@
     {
         bool CreateOrUpdateFile(string filePath, Stream originalFileStream);
         bool DeleteFile(string filePath);
-        bool EndSynchronization(int userId, int folderId);
+        bool EndSynchronization();
         Stream GetFile(string filePath);
         bool StartSynchronization(int userId, int folderId);
     }
