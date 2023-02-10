@@ -45,11 +45,20 @@ namespace Files_cloud_manager.Server.Services
                 {
                     return -1;
                 }
-                id = lastId;
-                lastId++;
+
 
                 IServiceScope serviceScope = _serviceProvider.CreateScope();
                 IFilesSynchronizationService fileSyncService = serviceScope.ServiceProvider.GetService<IFilesSynchronizationService>();
+
+                if (!fileSyncService.StartSynchronization(userId, fileGroupName))
+                {
+                    serviceScope.Dispose();
+                    return -1;
+                }
+
+                id = lastId;
+                lastId++;
+
                 _syncContexts.TryAdd(id, new syncContext
                 {
                     UserId = userId,
@@ -57,7 +66,7 @@ namespace Files_cloud_manager.Server.Services
                     ServiceScope = serviceScope,
                     FileSyncService = fileSyncService
                 });
-                fileSyncService.StartSynchronization(userId, fileGroupName);
+
                 _usersWhithActiveSyncs.Add(userId);
                 return id;
             }
@@ -74,7 +83,7 @@ namespace Files_cloud_manager.Server.Services
 
         public bool CreateOrUpdateFileInFileInfoGroup(int userId, int syncId, string filePath, Stream uploadedFile)
         {
-            if (!_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
+            if (!_syncContexts.ContainsKey(syncId) || _syncContexts[syncId].UserId != userId)
             {
                 return false;
             }
@@ -87,7 +96,7 @@ namespace Files_cloud_manager.Server.Services
 
         public bool DeleteFileInFileInfoGroup(int userId, int syncId, string filePath)
         {
-            if (!_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
+            if (!_syncContexts.ContainsKey(syncId) || _syncContexts[syncId].UserId != userId)
             {
                 return false;
             }
@@ -100,7 +109,7 @@ namespace Files_cloud_manager.Server.Services
 
         public Stream GetFile(int userId, int syncId, string filePath)
         {
-            if (!_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
+            if (!_syncContexts.ContainsKey(syncId) || _syncContexts[syncId].UserId != userId)
             {
                 return null;
             }
@@ -115,25 +124,50 @@ namespace Files_cloud_manager.Server.Services
         /// <returns></returns>
         public bool EndSynchronization(int userId, int syncId)
         {
-            if (_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
+            if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
             {
-                lock (_syncContexts[syncId].FileSyncService)
+                return false;
+            }
+            lock (_syncContexts[syncId].FileSyncService)
+            {
+                if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
                 {
-                    if (_syncContexts[syncId].FileSyncService.EndSynchronization())
-                    {
-                        _syncContexts[syncId].ServiceScope.Dispose();
-                        _syncContexts.TryRemove(syncId, out _);
-                        _usersWhithActiveSyncs.Remove(userId);
-                        return true;
-                    }
+                    return false;
+                }
+                if (_syncContexts[syncId].FileSyncService.EndSynchronization())
+                {
+                    _syncContexts[syncId].ServiceScope.Dispose();
+                    _syncContexts.TryRemove(syncId, out _);
+                    _usersWhithActiveSyncs.Remove(userId);
+                    return true;
                 }
             }
+
             return false;
         }
 
         public bool RollBackSynchronization(int userId, int syncId)
         {
-            return true;
+            if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
+            {
+                return false;
+            }
+            lock (_syncContexts[syncId].FileSyncService)
+            {
+                if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
+                {
+                    return false;
+                }
+                if (_syncContexts[syncId].FileSyncService.RollBackSynchronization())
+                {
+                    _syncContexts[syncId].ServiceScope.Dispose();
+                    _syncContexts.TryRemove(syncId, out _);
+                    _usersWhithActiveSyncs.Remove(userId);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
 

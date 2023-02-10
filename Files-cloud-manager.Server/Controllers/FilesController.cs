@@ -38,7 +38,7 @@ namespace Files_cloud_manager.Server.Controllers
         /// <param name="fileInfoGroupName"></param>
         /// <returns></returns>
         [HttpPost]
-        [ProducesResponseType(typeof(int), 201)]
+        [ProducesResponseType(typeof(int), 200)]
         [ProducesResponseType(400)]
         public IActionResult StartSynchronization(string fileInfoGroupName)
         {
@@ -52,7 +52,7 @@ namespace Files_cloud_manager.Server.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(201)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public IActionResult EndSynchronization(int syncId)
         {
@@ -63,8 +63,20 @@ namespace Files_cloud_manager.Server.Controllers
             return BadRequest();
         }
 
+        [HttpPost]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public IActionResult RollBackSynchronization(int syncId)
+        {
+            if (_syncContainer.RollBackSynchronization(GetUserId(), syncId))
+            {
+                return Ok();
+            }
+            return BadRequest();
+        }
+
         [HttpGet]
-        [ProducesResponseType(typeof(IList<FileInfoGroupDTO>), 201)]
+        [ProducesResponseType(typeof(IList<FileInfoGroupDTO>), 200)]
         [ProducesResponseType(400)]
         public IActionResult GetFoldersList()
         {
@@ -76,7 +88,7 @@ namespace Files_cloud_manager.Server.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        [ProducesResponseType(typeof(IList<FileInfoDTO>), 201)]
+        [ProducesResponseType(typeof(IList<FileInfoDTO>), 200)]
         [ProducesResponseType(400)]
         public IActionResult GetFolderContent(int syncId)
         {
@@ -94,7 +106,7 @@ namespace Files_cloud_manager.Server.Controllers
         /// <param name="fileInfoGroupName"></param>
         /// <returns></returns>\
         [HttpPost]
-        [ProducesResponseType(201)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public IActionResult CreateFileInfoGroup(string fileInfoGroupName)
         {
@@ -121,7 +133,7 @@ namespace Files_cloud_manager.Server.Controllers
         [HttpPost]
         [RequestFormLimits(MultipartBodyLengthLimit = 10L * 1024L * 1024L * 1024L)]
         [RequestSizeLimit(10L * 1024L * 1024L * 1024L)]
-        [ProducesResponseType(201)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public IActionResult CreateOrUpdateFileInFileInfoGroup(int syncId, string filePath, IFormFile uploadedFile)
         {
@@ -136,7 +148,7 @@ namespace Files_cloud_manager.Server.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(201)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public IActionResult DeleteFileInFileInfoGroup(int syncId, string filePath)
         {
@@ -148,7 +160,7 @@ namespace Files_cloud_manager.Server.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(201)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public IActionResult GetFile(int syncId, string filePath)
         {
@@ -158,8 +170,8 @@ namespace Files_cloud_manager.Server.Controllers
                 return File(stream, "application/octet-stream", Path.GetFileName(filePath));
             }
             return BadRequest();
-
         }
+
 
 
         [NonAction]

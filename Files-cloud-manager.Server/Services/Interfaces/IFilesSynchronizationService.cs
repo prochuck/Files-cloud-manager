@@ -11,5 +11,6 @@ namespace Files_cloud_manager.Server.Services.Interfaces
         Stream GetFile(string filePath);
         public List<FileInfoDTO> GetFilesInfos();
         bool StartSynchronization(int userId, string fileInfoGroupName);
+        bool RollBackSynchronization();
     }
 }

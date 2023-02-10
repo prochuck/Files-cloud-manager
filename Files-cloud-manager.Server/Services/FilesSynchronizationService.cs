@@ -16,16 +16,22 @@ namespace Files_cloud_manager.Server.Services
     public class FilesSynchronizationService : IFilesSynchronizationService
     {
         /// <summary>
-        /// Переделаь под контейнер синхронизации?
+        /// Словарь путь к файлу - файл
         /// </summary>
         private Dictionary<string, FileInfo> _filesInfos;
         private FileInfoGroup? _fileInfoGroup;
-        private IUnitOfWork _unitOfWork;
+        private List<string> _changedFiles = new List<string>();
+
         private bool _isSyncStarted;
+
         private string _basePath;
         private string _tmpFilesPath;
+
         private HashAlgorithm _hashService;
         private IMapper _mapper;
+        private IUnitOfWork _unitOfWork;
+
+        
 
         public FilesSynchronizationService(IUnitOfWork unitOfWork, IOptions<FilesSyncServiceConfig> config, IMapper mapper, HashAlgorithm hashService)
         {
@@ -66,12 +72,10 @@ namespace Files_cloud_manager.Server.Services
                 return false;
             }
 
+            _changedFiles.Add(filePath);
+
             string fullPath = GetFullPath(filePath);
-
-           
-
             FileInfo fileInfo;
-
             if (!_filesInfos.ContainsKey(filePath))
             {
                 fileInfo = new FileInfo()
@@ -85,10 +89,10 @@ namespace Files_cloud_manager.Server.Services
                 fileInfo = _filesInfos[filePath];
             }
 
-            // todo передалать перезапись файлов.
             if (File.Exists(fullPath))
             {
-                File.Delete(fullPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
+                File.Move(fullPath, GetFullTmpPath(filePath));
             }
             fileInfo.Hash = CreateFileFromStream(originalFileStream, fullPath);
 
@@ -119,9 +123,11 @@ namespace Files_cloud_manager.Server.Services
 
             if (File.Exists(fullPath))
             {
-                File.Delete(fullPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
+                File.Move(fullPath, GetFullTmpPath(filePath));
             }
 
+            _changedFiles.Add(filePath);
             _filesInfos.Remove(filePath);
             _unitOfWork.FileInfoRepository.Delete(fileInfo);
 
@@ -147,10 +153,48 @@ namespace Files_cloud_manager.Server.Services
         {
             return _fileInfoGroup.Files.Select(e => _mapper.Map<FileInfo, FileInfoDTO>(e)).ToList();
         }
+        public bool EndSynchronization()
+        {
+            // todo Добавить фиксацию созданных файлов, и возможность отката
+            if (!_isSyncStarted)
+            {
+                return false;
+            }
+
+            Directory.Delete(GetFullTmpPath(""));
+
+            _unitOfWork.Save();
+            _isSyncStarted = false;
+            return true;
+        }
+        public bool RollBackSynchronization()
+        {
+            if (!_isSyncStarted)
+            {
+                return false;
+            }
+
+            foreach (string item in _changedFiles)
+            {
+                if (File.Exists(GetFullPath(item)))
+                {
+                    File.Delete(GetFullPath(item));
+                }
+                File.Move(GetFullTmpPath(item), GetFullPath(item));
+            }
+
+            _isSyncStarted = false;
+
+            return true;
+        }
 
         private string GetFullPath(string relativePath)
         {
             return $"{_basePath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{relativePath}";
+        }
+        private string GetFullTmpPath(string relativePath)
+        {
+            return $"{_tmpFilesPath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{relativePath}";
         }
         private byte[] CreateFileFromStream(Stream originalFileStream, string path)
         {
@@ -192,31 +236,6 @@ namespace Files_cloud_manager.Server.Services
             return !name.IsNullOrEmpty() &&
                 name.IndexOfAny(Path.GetInvalidPathChars()) < 0;
         }
-        public bool EndSynchronization()
-        {
-            // todo Добавить фиксацию созданных файлов, и возможность отката
-            if (!_isSyncStarted)
-            {
-                return false;
-            }
-
-            _unitOfWork.Save();
-            _isSyncStarted = false;
-            return true;
-        }
-
-        public bool RollBackSynchronization()
-        {
-            if (!_isSyncStarted)
-            {
-                return false;
-            }
-
-            _isSyncStarted = false;
-
-            return true;
-        }
-
     }
 
 }
