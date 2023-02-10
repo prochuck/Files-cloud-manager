@@ -20,7 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services.AddDbContext<AppDBContext>(e => e.UseSqlServer(@"Data Source=(local);Database=HyperVWebController2;Trusted_Connection=True;TrustServerCertificate=True;"));
+builder.Services.AddDbContext<AppDBContext>(e => e.UseSqlServer(builder.Configuration.GetConnectionString("Files-cloud-manager-db")));
 
 builder.Services.AddTransient<IRoleRepository, RoleRepository>();
 builder.Services.AddTransient<IUserRepository, UserRepository>();
