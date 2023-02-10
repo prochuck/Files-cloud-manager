@@ -6,6 +6,12 @@ using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using AutoMapper;
+using Files_cloud_manager.Server.Mapper;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Server.HttpSys;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
     
@@ -20,6 +26,7 @@ builder.Services.AddTransient<IFileInfoRepository, FileInfoRepository>();
 builder.Services.AddTransient<IFileInfoGroupRepostiory, FileInfoGroupRepository>();
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 builder.Services.AddTransient<HashAlgorithm, SHA512>(e => SHA512.Create());
+builder.Services.AddScoped<IFilesSynchronizationService, FilesSynchronizationService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 
