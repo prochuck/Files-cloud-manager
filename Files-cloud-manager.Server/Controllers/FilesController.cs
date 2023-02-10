@@ -3,6 +3,7 @@ using Files_cloud_manager.Models;
 using Files_cloud_manager.Models.DTO;
 using Files_cloud_manager.Server.Domain.Interfaces;
 using Files_cloud_manager.Server.Services;
+using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -19,11 +20,11 @@ namespace Files_cloud_manager.Server.Controllers
     {
         private IMapper _mapper;
         private IUnitOfWork _unitOfWork;
-        private SynchronizationContainerService _syncContainer;
+        private ISynchronizationContainerService _syncContainer;
 
         private int _userId;
 
-        public FilesController(IMapper mapper, IUnitOfWork unitOfWork, SynchronizationContainerService syncContainer)
+        public FilesController(IMapper mapper, IUnitOfWork unitOfWork, ISynchronizationContainerService syncContainer)
         {
             _mapper = mapper;
             _unitOfWork = unitOfWork;

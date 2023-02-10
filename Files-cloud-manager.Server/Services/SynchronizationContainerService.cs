@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace Files_cloud_manager.Server.Services
 {
-    public class SynchronizationContainerService
+    public class SynchronizationContainerService : ISynchronizationContainerService
     {
         private ConcurrentDictionary<int, syncContext> _syncContexts = new ConcurrentDictionary<int, syncContext>();
         private HashSet<int> _usersWhithActiveSyncs = new HashSet<int>();
@@ -63,7 +63,7 @@ namespace Files_cloud_manager.Server.Services
             }
         }
 
-        public List<FileInfoDTO> GetFilesInfos(int userId,int syncId)
+        public List<FileInfoDTO> GetFilesInfos(int userId, int syncId)
         {
             if (_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
             {
@@ -72,7 +72,7 @@ namespace Files_cloud_manager.Server.Services
             return null;
         }
 
-        public bool CreateOrUpdateFileInFileInfoGroup(int userId,int syncId, string filePath, Stream uploadedFile)
+        public bool CreateOrUpdateFileInFileInfoGroup(int userId, int syncId, string filePath, Stream uploadedFile)
         {
             if (!_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
             {
@@ -85,7 +85,7 @@ namespace Files_cloud_manager.Server.Services
             return false;
         }
 
-        public bool DeleteFileInFileInfoGroup(int userId,int syncId, string filePath)
+        public bool DeleteFileInFileInfoGroup(int userId, int syncId, string filePath)
         {
             if (!_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
             {
@@ -98,7 +98,7 @@ namespace Files_cloud_manager.Server.Services
             return false;
         }
 
-        public Stream GetFile(int userId,int syncId, string filePath)
+        public Stream GetFile(int userId, int syncId, string filePath)
         {
             if (!_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
             {
@@ -129,6 +129,11 @@ namespace Files_cloud_manager.Server.Services
                 }
             }
             return false;
+        }
+
+        public bool RollBackSynchronization(int userId, int syncId)
+        {
+            return true;
         }
 
 
