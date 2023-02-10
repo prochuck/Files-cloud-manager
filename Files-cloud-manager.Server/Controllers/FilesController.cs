@@ -22,14 +22,12 @@ namespace Files_cloud_manager.Server.Controllers
         private IUnitOfWork _unitOfWork;
         private ISynchronizationContainerService _syncContainer;
 
-        private int _userId;
 
         public FilesController(IMapper mapper, IUnitOfWork unitOfWork, ISynchronizationContainerService syncContainer)
         {
             _mapper = mapper;
             _unitOfWork = unitOfWork;
             _syncContainer = syncContainer;
-            _userId = int.Parse(User.Claims.First(e => e.Type == ClaimTypes.NameIdentifier).Value);
         }
 
 
@@ -44,7 +42,7 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult StartSynchronization(string fileInfoGroupName)
         {
-            int syncId = _syncContainer.StartNewSynchronization(_userId, fileInfoGroupName);
+            int syncId = _syncContainer.StartNewSynchronization(GetUserId(), fileInfoGroupName);
             if (syncId != -1)
             {
                 return Ok(syncId);
@@ -58,7 +56,7 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult EndSynchronization(int syncId)
         {
-            if (_syncContainer.EndSynchronization(_userId, syncId))
+            if (_syncContainer.EndSynchronization(GetUserId(), syncId))
             {
                 return Ok();
             }
@@ -70,7 +68,7 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult GetFoldersList()
         {
-            return Ok(_unitOfWork.FileInfoGroupRepostiory.Get(e => e.OwnerId == _userId)
+            return Ok(_unitOfWork.FileInfoGroupRepostiory.Get(e => e.OwnerId == GetUserId())
                 .Select(e => _mapper.Map<FileInfoGroup, FileInfoGroupDTO>(e)).ToList());
         }
         /// <summary>
@@ -82,7 +80,7 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult GetFolderContent(int syncId)
         {
-            List<FileInfoDTO> files = _syncContainer.GetFilesInfos(_userId, syncId);
+            List<FileInfoDTO> files = _syncContainer.GetFilesInfos(GetUserId(), syncId);
             if (files is not null)
             {
                 return Ok(files);
@@ -100,8 +98,12 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult CreateFileInfoGroup(string fileInfoGroupName)
         {
-            int userId = int.Parse(User.Claims.First(e => e.Type == ClaimTypes.NameIdentifier).Value);
-            if (_unitOfWork.FileInfoGroupRepostiory.Get(e => e.OwnerId == userId && e.Name == fileInfoGroupName).Any())
+
+            if (fileInfoGroupName.Any(e => !char.IsLetterOrDigit(e)))
+            {
+                return BadRequest();
+            }
+            if (_unitOfWork.FileInfoGroupRepostiory.Get(e => e.OwnerId == GetUserId() && e.Name == fileInfoGroupName).Any())
             {
                 return BadRequest();
 
@@ -109,7 +111,7 @@ namespace Files_cloud_manager.Server.Controllers
             FileInfoGroup newGroup = new FileInfoGroup()
             {
                 Name = fileInfoGroupName,
-                OwnerId = userId
+                OwnerId = GetUserId()
             };
             _unitOfWork.FileInfoGroupRepostiory.Create(newGroup);
             _unitOfWork.Save();
@@ -125,7 +127,7 @@ namespace Files_cloud_manager.Server.Controllers
         {
             using (Stream readStream = uploadedFile.OpenReadStream())
             {
-                if (_syncContainer.CreateOrUpdateFileInFileInfoGroup(_userId, syncId, filePath, readStream))
+                if (_syncContainer.CreateOrUpdateFileInFileInfoGroup(GetUserId(), syncId, filePath, readStream))
                 {
                     return Ok();
                 }
@@ -138,7 +140,7 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult DeleteFileInFileInfoGroup(int syncId, string filePath)
         {
-            if (_syncContainer.DeleteFileInFileInfoGroup(_userId, syncId, filePath))
+            if (_syncContainer.DeleteFileInFileInfoGroup(GetUserId(), syncId, filePath))
             {
                 return Ok();
             }
@@ -150,13 +152,20 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public IActionResult GetFile(int syncId, string filePath)
         {
-            Stream stream = _syncContainer.GetFile(_userId, syncId, filePath);
+            Stream stream = _syncContainer.GetFile(GetUserId(), syncId, filePath);
             if (stream is not null)
             {
                 return File(stream, "application/octet-stream", Path.GetFileName(filePath));
             }
             return BadRequest();
 
+        }
+
+
+        [NonAction]
+        private int GetUserId()
+        {
+            return int.Parse(User.Claims.First(e => e.Type == ClaimTypes.NameIdentifier).Value);
         }
     }
 }
