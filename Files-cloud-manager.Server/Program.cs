@@ -25,8 +25,11 @@ builder.Services.AddTransient<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IFileInfoRepository, FileInfoRepository>();
 builder.Services.AddTransient<IFileInfoGroupRepostiory, FileInfoGroupRepository>();
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
+
 builder.Services.AddTransient<HashAlgorithm, SHA512>(e => SHA512.Create());
 builder.Services.AddScoped<IFilesSynchronizationService, FilesSynchronizationService>();
+builder.Services.AddSingleton<SynchronizationContainerService>();
+
 builder.Services.AddAutoMapper(typeof(FileInfoMapperProfile), typeof(FileInfoGroupMapperProfile));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>

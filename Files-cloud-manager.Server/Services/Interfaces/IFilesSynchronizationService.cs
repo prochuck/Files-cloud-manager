@@ -1,4 +1,7 @@
-﻿namespace Files_cloud_manager.Server.Services.Interfaces
+﻿using Files_cloud_manager.Models;
+using Files_cloud_manager.Models.DTO;
+
+namespace Files_cloud_manager.Server.Services.Interfaces
 {
     public interface IFilesSynchronizationService
     {
@@ -6,6 +9,7 @@
         bool DeleteFile(string filePath);
         bool EndSynchronization();
         Stream GetFile(string filePath);
-        bool StartSynchronization(int userId, int folderId);
+        public List<FileInfoDTO> GetFilesInfos();
+        bool StartSynchronization(int userId, string fileInfoGroupName);
     }
 }

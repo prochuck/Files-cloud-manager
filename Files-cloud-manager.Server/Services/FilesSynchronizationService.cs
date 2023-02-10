@@ -5,6 +5,9 @@ using Files_cloud_manager.Server.Services.Interfaces;
 using System.IO;
 using System.Security.Cryptography;
 using FileInfo = Files_cloud_manager.Models.FileInfo;
+using AutoMapper;
+using Files_cloud_manager.Server.Domain;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Files_cloud_manager.Server.Services
 {
@@ -19,25 +22,30 @@ namespace Files_cloud_manager.Server.Services
         private bool _isSyncStarted;
         private string _basePath;
         private HashAlgorithm _hashService;
+        private IMapper _mapper;
 
-        public FilesSynchronizationService(IUnitOfWork unitOfWork, IConfiguration configuration)
+        public FilesSynchronizationService(IUnitOfWork unitOfWork, IConfiguration configuration, IMapper mapper, HashAlgorithm hashService)
         {
             _unitOfWork = unitOfWork;
             _basePath = configuration["basePath"];
+            _mapper = mapper;
+            _hashService = hashService;
+            _hashService.Initialize();
         }
 
-        public bool StartSynchronization(int userId, int folderId)
+        public bool StartSynchronization(int userId, string fileInfoGroupName)
         {
             _fileInfoGroup = _unitOfWork.FileInfoGroupRepostiory.Get(
-                    e => e.Id == folderId,
+                    e => e.Name == fileInfoGroupName && e.OwnerId == userId,
                     new string[] { nameof(_fileInfoGroup.Files), nameof(_fileInfoGroup.Owner) }
-                ).FirstOrDefault();
+            ).FirstOrDefault();
 
             if (_fileInfoGroup is null || _fileInfoGroup.OwnerId != userId)
             {
                 return false;
             }
 
+            _isSyncStarted = true;
             _filesInfos = _fileInfoGroup.Files.ToDictionary(e => e.RelativePath);
             return true;
         }
@@ -47,8 +55,14 @@ namespace Files_cloud_manager.Server.Services
             {
                 return false;
             }
+            if (!CheckIfFileNameIsValid(filePath))
+            {
+                return false;
+            }
 
             string fullPath = GetFullPath(filePath);
+
+           
 
             FileInfo fileInfo;
 
@@ -85,6 +99,10 @@ namespace Files_cloud_manager.Server.Services
         }
         public bool DeleteFile(string filePath)
         {
+            if (!_isSyncStarted)
+            {
+                return false;
+            }
             if (!_filesInfos.ContainsKey(filePath))
             {
                 return false;
@@ -105,6 +123,7 @@ namespace Files_cloud_manager.Server.Services
         }
         public Stream GetFile(string filePath)
         {
+
             if (!_filesInfos.ContainsKey(filePath))
             {
                 return null;
@@ -112,15 +131,15 @@ namespace Files_cloud_manager.Server.Services
 
             string fullPath = GetFullPath(filePath);
 
-            if (File.Exists(filePath))
+            if (File.Exists(fullPath))
             {
-                return new FileStream(filePath, FileMode.Open);
+                return new FileStream(fullPath, FileMode.Open);
             }
             return null;
         }
-        public List<FileInfoDTO> GetFiles()
+        public List<FileInfoDTO> GetFilesInfos()
         {
-            return _fileInfoGroup.Files.Select(e => AutoMapper)
+            return _fileInfoGroup.Files.Select(e => _mapper.Map<FileInfo, FileInfoDTO>(e)).ToList();
         }
 
         private string GetFullPath(string relativePath)
@@ -129,46 +148,69 @@ namespace Files_cloud_manager.Server.Services
         }
         private byte[] CreateFileFromStream(Stream originalFileStream, string path)
         {
-            _hashService.Initialize();
-            FileStream fileStream = new FileStream(path, FileMode.CreateNew);
-            long bytesToCopyLeft = originalFileStream.Length;
-            byte[] buffer = new byte[_hashService.InputBlockSize];
-            while (bytesToCopyLeft != 0)
+            lock (_hashService)
             {
-                int toRead = buffer.Length < bytesToCopyLeft ? buffer.Length : (int)bytesToCopyLeft;
-                int readed = originalFileStream.Read(buffer, 0, toRead);
+                _hashService.Initialize();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                using (FileStream fileStream = new FileStream(path, FileMode.CreateNew))
+                {
+                    long bytesToCopyLeft = originalFileStream.Length;
+                    byte[] buffer = new byte[1024];
+                    while (bytesToCopyLeft != 0)
+                    {
+                        int toRead = buffer.Length < bytesToCopyLeft ? buffer.Length : (int)bytesToCopyLeft;
+                        int readed = originalFileStream.Read(buffer, 0, toRead);
 
-                if (readed == buffer.Length)
-                {
-                    _hashService.TransformBlock(buffer, 0, buffer.Length, null, 0);
-                }
-                else
-                {
-                    _hashService.TransformFinalBlock(buffer, 0, buffer.Length);
-                }
+                        if (readed == buffer.Length)
+                        {
+                            _hashService.TransformBlock(buffer, 0, buffer.Length, null, 0);
+                        }
+                        else
+                        {
+                            _hashService.TransformFinalBlock(buffer, 0, buffer.Length);
+                        }
 
-                if (readed == 0)
-                {
-                    break;
+                        if (readed == 0)
+                        {
+                            break;
+                        }
+                        fileStream.Write(buffer, 0, readed);
+                        bytesToCopyLeft -= readed;
+                    }
                 }
-                fileStream.Write(buffer, 0, readed);
-                bytesToCopyLeft -= readed;
+                return _hashService.Hash;
             }
-            return _hashService.Hash;
         }
-
+        private bool CheckIfFileNameIsValid(string name)
+        {
+            return !name.IsNullOrEmpty() &&
+                name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        }
         public bool EndSynchronization()
         {
-            // todo Добавить фиксацию созданных файлов
+            // todo Добавить фиксацию созданных файлов, и возможность отката
             if (!_isSyncStarted)
             {
-                return false; 
+                return false;
             }
 
             _unitOfWork.Save();
             _isSyncStarted = false;
             return true;
         }
+
+        public bool RollBackSynchronization()
+        {
+            if (!_isSyncStarted)
+            {
+                return false;
+            }
+
+            _isSyncStarted = false;
+
+            return true;
+        }
+
     }
 
 }
