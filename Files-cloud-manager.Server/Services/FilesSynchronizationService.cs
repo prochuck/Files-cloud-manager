@@ -190,7 +190,7 @@ namespace Files_cloud_manager.Server.Services
         private bool CheckIfFileNameIsValid(string name)
         {
             return !name.IsNullOrEmpty() &&
-                name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+                name.IndexOfAny(Path.GetInvalidPathChars()) < 0;
         }
         public bool EndSynchronization()
         {
