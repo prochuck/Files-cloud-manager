@@ -23,32 +23,32 @@ namespace Files_cloud_manager.Server.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string login, string password, string? ReturnUrl)
+        public async Task<IActionResult> Login(string login, string password)
         {
             User? user = _unitOfWork.UserRepository.Find(login);
 
             if (!(user is null))
             {
-                if (user.PasswordHash != _hashAlgorithm.ComputeHash(password.Select(e=>(byte)e).ToArray()))
-                    return View();
+                if (!user.PasswordHash.SequenceEqual(_hashAlgorithm.ComputeHash(password.Select(e => (byte)e).ToArray())))
+                    return BadRequest();
                 var claims = new List<Claim> {
                     new Claim(ClaimTypes.Name, user.Login),
                      new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Role,user.Role.RoleName)
                 };
-                var claimsIdentity = new ClaimsIdentity(claims, "Cookies");
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
-                return Redirect(ReturnUrl is null ? "/" : ReturnUrl);
+                return Ok();
             }
-            return View();
+            return BadRequest();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Logout(string Void)
+        public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync();
-            return RedirectToAction("Login");
+            return Ok();
         }
 
         [HttpGet]
@@ -75,10 +75,11 @@ namespace Files_cloud_manager.Server.Controllers
                 return BadRequest("Логин занят");
             }
             _unitOfWork.UserRepository.Create(
-                new User() {
+                new User()
+                {
                     Login = login,
-                    PasswordHash = _hashAlgorithm.ComputeHash(password.Select(e=>(byte)e).ToArray()), 
-                    RoleId = roleId 
+                    PasswordHash = _hashAlgorithm.ComputeHash(password.Select(e => (byte)e).ToArray()),
+                    RoleId = roleId
                 });
             _unitOfWork.Save();
             return View();

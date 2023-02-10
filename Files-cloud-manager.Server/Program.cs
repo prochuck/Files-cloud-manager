@@ -27,6 +27,15 @@ builder.Services.AddTransient<IFileInfoGroupRepostiory, FileInfoGroupRepository>
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 builder.Services.AddTransient<HashAlgorithm, SHA512>(e => SHA512.Create());
 builder.Services.AddScoped<IFilesSynchronizationService, FilesSynchronizationService>();
+builder.Services.AddAutoMapper(typeof(FileInfoMapperProfile), typeof(FileInfoGroupMapperProfile));
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
+{
+    o.ExpireTimeSpan = TimeSpan.FromMinutes(20);
+    o.SlidingExpiration = true;
+});
+
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 
@@ -45,6 +54,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
