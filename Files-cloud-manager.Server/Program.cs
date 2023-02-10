@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Server.HttpSys;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
+using Files_cloud_manager.Server.Configs;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
     
@@ -26,9 +28,11 @@ builder.Services.AddTransient<IFileInfoRepository, FileInfoRepository>();
 builder.Services.AddTransient<IFileInfoGroupRepostiory, FileInfoGroupRepository>();
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 
+builder.Services.Configure<FilesSyncServiceConfig>(builder.Configuration.GetSection(nameof(FilesSyncServiceConfig)));
+
 builder.Services.AddTransient<HashAlgorithm, SHA512>(e => SHA512.Create());
 builder.Services.AddScoped<IFilesSynchronizationService, FilesSynchronizationService>();
-builder.Services.AddSingleton<SynchronizationContainerService>();
+builder.Services.AddSingleton<ISynchronizationContainerService,SynchronizationContainerService>();
 
 builder.Services.AddAutoMapper(typeof(FileInfoMapperProfile), typeof(FileInfoGroupMapperProfile));
 

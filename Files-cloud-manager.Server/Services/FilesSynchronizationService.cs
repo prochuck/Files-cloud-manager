@@ -8,6 +8,8 @@ using FileInfo = Files_cloud_manager.Models.FileInfo;
 using AutoMapper;
 using Files_cloud_manager.Server.Domain;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using Files_cloud_manager.Server.Configs;
 
 namespace Files_cloud_manager.Server.Services
 {
@@ -21,13 +23,17 @@ namespace Files_cloud_manager.Server.Services
         private IUnitOfWork _unitOfWork;
         private bool _isSyncStarted;
         private string _basePath;
+        private string _tmpFilesPath;
         private HashAlgorithm _hashService;
         private IMapper _mapper;
 
-        public FilesSynchronizationService(IUnitOfWork unitOfWork, IConfiguration configuration, IMapper mapper, HashAlgorithm hashService)
+        public FilesSynchronizationService(IUnitOfWork unitOfWork, IOptions<FilesSyncServiceConfig> config, IMapper mapper, HashAlgorithm hashService)
         {
             _unitOfWork = unitOfWork;
-            _basePath = configuration["basePath"];
+
+            _basePath = config.Value.BaseFilesPath;
+            _tmpFilesPath = config.Value.TmpFilesPath;
+
             _mapper = mapper;
             _hashService = hashService;
             _hashService.Initialize();
