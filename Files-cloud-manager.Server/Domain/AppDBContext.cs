@@ -14,13 +14,13 @@ namespace Files_cloud_manager.Server.Domain
         public DbSet<FileInfoGroup> FilesInfoGroups { get; set; }
 
 
-        public AppDBContext(DbContextOptions options,HashAlgorithm hashAlgorithm) : base(options)
+        public AppDBContext(DbContextOptions options,IHashAlgorithmFactory hashFactory) : base(options)
         {
             if (Database.EnsureCreated())
             {
                 Roles.Add(new Role() { RoleName = "Admin" });
                 Roles.Add(new Role() { RoleName = "User" });
-                Users.Add(new User() { RoleId = 1, Login = "admin", PasswordHash = hashAlgorithm.ComputeHash("123".Select(e => (byte)e).ToArray()), UserFoldersPath = "123" });
+                Users.Add(new User() { RoleId = 1, Login = "admin", PasswordHash = hashFactory.Create().ComputeHash("123".Select(e => (byte)e).ToArray()), UserFoldersPath = "123" });
                 this.SaveChanges();
             }
             this.SaveChanges();

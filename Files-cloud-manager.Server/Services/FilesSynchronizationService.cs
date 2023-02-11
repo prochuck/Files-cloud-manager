@@ -27,13 +27,16 @@ namespace Files_cloud_manager.Server.Services
         private string _basePath;
         private string _tmpFilesPath;
 
-        private HashAlgorithm _hashService;
+        private IHashAlgorithmFactory _hashAlgFactory;
         private IMapper _mapper;
         private IUnitOfWork _unitOfWork;
 
-        
 
-        public FilesSynchronizationService(IUnitOfWork unitOfWork, IOptions<FilesSyncServiceConfig> config, IMapper mapper, HashAlgorithm hashService)
+
+        public FilesSynchronizationService(IUnitOfWork unitOfWork,
+            IOptions<FilesSyncServiceConfig> config, 
+            IMapper mapper, 
+            IHashAlgorithmFactory hashAlgFactory)
         {
             _unitOfWork = unitOfWork;
 
@@ -41,8 +44,7 @@ namespace Files_cloud_manager.Server.Services
             _tmpFilesPath = config.Value.TmpFilesPath;
 
             _mapper = mapper;
-            _hashService = hashService;
-            _hashService.Initialize();
+            _hashAlgFactory = hashAlgFactory;
         }
 
         public bool StartSynchronization(int userId, string fileInfoGroupName)
@@ -63,11 +65,7 @@ namespace Files_cloud_manager.Server.Services
         }
         public bool CreateOrUpdateFile(string filePath, Stream originalFileStream)
         {
-            if (!_isSyncStarted)
-            {
-                return false;
-            }
-            if (!CheckIfFileNameIsValid(filePath))
+            if (!_isSyncStarted || !CheckIfFileNameIsValid(filePath))
             {
                 return false;
             }
@@ -94,7 +92,8 @@ namespace Files_cloud_manager.Server.Services
                 Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
                 File.Move(fullPath, GetFullTmpPath(filePath));
             }
-            fileInfo.Hash = CreateFileFromStream(originalFileStream, fullPath);
+
+            fileInfo.Hash = CreateFileFromStream(originalFileStream, fullPath).Result;
 
             if (!_filesInfos.ContainsKey(filePath))
             {
@@ -160,8 +159,10 @@ namespace Files_cloud_manager.Server.Services
             {
                 return false;
             }
-
-            Directory.Delete(GetFullTmpPath(""));
+            if (Directory.Exists(GetFullTmpPath("")))
+            {
+                Directory.Delete(GetFullTmpPath(""), true);
+            }
 
             _unitOfWork.Save();
             _isSyncStarted = false;
@@ -196,40 +197,19 @@ namespace Files_cloud_manager.Server.Services
         {
             return $"{_tmpFilesPath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{relativePath}";
         }
-        private byte[] CreateFileFromStream(Stream originalFileStream, string path)
+        private async Task<byte[]> CreateFileFromStream(Stream originalFileStream, string path)
         {
-            lock (_hashService)
+            HashAlgorithm hashAlgorithm = _hashAlgFactory.Create();
+            hashAlgorithm.Initialize();
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+
+            using (FileStream fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
+            using (CryptoStream cryptoStream = new CryptoStream(fileStream, hashAlgorithm, CryptoStreamMode.Write))
             {
-                _hashService.Initialize();
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                using (FileStream fileStream = new FileStream(path, FileMode.CreateNew))
-                {
-                    long bytesToCopyLeft = originalFileStream.Length;
-                    byte[] buffer = new byte[1024];
-                    while (bytesToCopyLeft != 0)
-                    {
-                        int toRead = buffer.Length < bytesToCopyLeft ? buffer.Length : (int)bytesToCopyLeft;
-                        int readed = originalFileStream.Read(buffer, 0, toRead);
-
-                        if (readed == buffer.Length)
-                        {
-                            _hashService.TransformBlock(buffer, 0, buffer.Length, null, 0);
-                        }
-                        else
-                        {
-                            _hashService.TransformFinalBlock(buffer, 0, buffer.Length);
-                        }
-
-                        if (readed == 0)
-                        {
-                            break;
-                        }
-                        fileStream.Write(buffer, 0, readed);
-                        bytesToCopyLeft -= readed;
-                    }
-                }
-                return _hashService.Hash;
+                await originalFileStream.CopyToAsync(cryptoStream);
             }
+            return hashAlgorithm.Hash;
+
         }
         private bool CheckIfFileNameIsValid(string name)
         {

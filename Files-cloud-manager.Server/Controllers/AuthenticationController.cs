@@ -15,11 +15,11 @@ namespace Files_cloud_manager.Server.Controllers
     public class AuthenticationController : Controller
     {
         IUnitOfWork _unitOfWork;
-        HashAlgorithm _hashAlgorithm;
-        public AuthenticationController(HashAlgorithm hashAlgorithm, IUnitOfWork unitOfWork)
+        IHashAlgorithmFactory _hashAlgFactory;
+        public AuthenticationController(IHashAlgorithmFactory hashAlgFactory, IUnitOfWork unitOfWork)
         {
-            this._hashAlgorithm = hashAlgorithm;
-            this._unitOfWork = unitOfWork;
+            _hashAlgFactory = hashAlgFactory;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpPost]
@@ -29,7 +29,7 @@ namespace Files_cloud_manager.Server.Controllers
 
             if (!(user is null))
             {
-                if (!user.PasswordHash.SequenceEqual(_hashAlgorithm.ComputeHash(password.Select(e => (byte)e).ToArray())))
+                if (!user.PasswordHash.SequenceEqual(_hashAlgFactory.Create().ComputeHash(password.Select(e => (byte)e).ToArray())))
                     return BadRequest();
                 var claims = new List<Claim> {
                     new Claim(ClaimTypes.Name, user.Login),
@@ -78,7 +78,7 @@ namespace Files_cloud_manager.Server.Controllers
                 new User()
                 {
                     Login = login,
-                    PasswordHash = _hashAlgorithm.ComputeHash(password.Select(e => (byte)e).ToArray()),
+                    PasswordHash = _hashAlgFactory.Create().ComputeHash(password.Select(e => (byte)e).ToArray()),
                     RoleId = roleId
                 });
             _unitOfWork.Save();

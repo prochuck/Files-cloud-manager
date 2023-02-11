@@ -30,7 +30,7 @@ builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 
 builder.Services.Configure<FilesSyncServiceConfig>(builder.Configuration.GetSection(nameof(FilesSyncServiceConfig)));
 
-builder.Services.AddTransient<HashAlgorithm, SHA512>(e => SHA512.Create());
+builder.Services.AddSingleton<IHashAlgorithmFactory,SHA256Factory>();
 builder.Services.AddScoped<IFilesSynchronizationService, FilesSynchronizationService>();
 builder.Services.AddSingleton<ISynchronizationContainerService,SynchronizationContainerService>();
 
