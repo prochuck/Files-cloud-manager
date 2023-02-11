@@ -4,11 +4,15 @@ using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace Files_cloud_manager.Server.Services
 {
     public class SynchronizationContainerService : ISynchronizationContainerService
     {
+        const int rollBackTimeInMinutes = 30;
+
         private ConcurrentDictionary<int, syncContext> _syncContexts = new ConcurrentDictionary<int, syncContext>();
         private HashSet<int> _usersWhithActiveSyncs = new HashSet<int>();
 
@@ -23,6 +27,7 @@ namespace Files_cloud_manager.Server.Services
             public IServiceScope ServiceScope;
             public int UserId;
             public string FileGroupName;
+            public Timer Timer;
         }
 
         public SynchronizationContainerService(IServiceProvider serviceProvider)
@@ -64,9 +69,11 @@ namespace Files_cloud_manager.Server.Services
                     UserId = userId,
                     FileGroupName = fileGroupName,
                     ServiceScope = serviceScope,
-                    FileSyncService = fileSyncService
+                    FileSyncService = fileSyncService,
+                    Timer = new Timer(TimeSpan.FromMinutes(rollBackTimeInMinutes).TotalMilliseconds)
                 });
-
+                _syncContexts[id].Timer.Elapsed += (e, k) => RollBackSynchronization(userId, id);
+                _syncContexts[id].Timer.Start();
                 _usersWhithActiveSyncs.Add(userId);
                 return id;
             }
@@ -74,24 +81,37 @@ namespace Files_cloud_manager.Server.Services
 
         public List<FileInfoDTO> GetFilesInfos(int userId, int syncId)
         {
+            
             if (_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId)
             {
+                _syncContexts[syncId].Timer.Stop();
+                _syncContexts[syncId].Timer.Start();
                 return _syncContexts[syncId].FileSyncService.GetFilesInfos();
             }
             return null;
         }
 
-        public bool CreateOrUpdateFileInFileInfoGroup(int userId, int syncId, string filePath, Stream uploadedFile)
+        public async Task<bool> CreateOrUpdateFileInFileInfoGroupAsync(int userId, int syncId, string filePath, Stream uploadedFile)
         {
             if (!_syncContexts.ContainsKey(syncId) || _syncContexts[syncId].UserId != userId)
             {
                 return false;
             }
-            if (_syncContexts[syncId].FileSyncService.CreateOrUpdateFile(filePath, uploadedFile))
+            _syncContexts[syncId].Timer.Stop();
+            try
             {
-                return true;
+                if (await _syncContexts[syncId].FileSyncService.CreateOrUpdateFileAsync(filePath, uploadedFile))
+                {
+                    return true;
+                }
+                return false;
             }
-            return false;
+            finally
+            {
+                _syncContexts[syncId].Timer.Start();
+            }
+          
+           
         }
 
         public bool DeleteFileInFileInfoGroup(int userId, int syncId, string filePath)
@@ -102,6 +122,8 @@ namespace Files_cloud_manager.Server.Services
             }
             if (_syncContexts[syncId].FileSyncService.DeleteFile(filePath))
             {
+                _syncContexts[syncId].Timer.Stop();
+                _syncContexts[syncId].Timer.Start();
                 return true;
             }
             return false;
@@ -113,6 +135,8 @@ namespace Files_cloud_manager.Server.Services
             {
                 return null;
             }
+            _syncContexts[syncId].Timer.Stop();
+            _syncContexts[syncId].Timer.Start();
             Stream stream = _syncContexts[syncId].FileSyncService.GetFile(filePath);
             return stream;
         }
@@ -124,11 +148,7 @@ namespace Files_cloud_manager.Server.Services
         /// <returns></returns>
         public bool EndSynchronization(int userId, int syncId)
         {
-            if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
-            {
-                return false;
-            }
-            lock (_syncContexts[syncId].FileSyncService)
+            lock (idLocker)
             {
                 if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
                 {
@@ -136,6 +156,7 @@ namespace Files_cloud_manager.Server.Services
                 }
                 if (_syncContexts[syncId].FileSyncService.EndSynchronization())
                 {
+                    _syncContexts[syncId].Timer.Stop();
                     _syncContexts[syncId].ServiceScope.Dispose();
                     _syncContexts.TryRemove(syncId, out _);
                     _usersWhithActiveSyncs.Remove(userId);
@@ -148,11 +169,7 @@ namespace Files_cloud_manager.Server.Services
 
         public bool RollBackSynchronization(int userId, int syncId)
         {
-            if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
-            {
-                return false;
-            }
-            lock (_syncContexts[syncId].FileSyncService)
+            lock (idLocker)
             {
                 if (!(_syncContexts.ContainsKey(syncId) && _syncContexts[syncId].UserId == userId))
                 {
@@ -160,13 +177,13 @@ namespace Files_cloud_manager.Server.Services
                 }
                 if (_syncContexts[syncId].FileSyncService.RollBackSynchronization())
                 {
+                    _syncContexts[syncId].Timer.Stop();
                     _syncContexts[syncId].ServiceScope.Dispose();
                     _syncContexts.TryRemove(syncId, out _);
                     _usersWhithActiveSyncs.Remove(userId);
                     return true;
                 }
             }
-
             return false;
         }
 
