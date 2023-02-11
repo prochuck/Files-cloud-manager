@@ -63,7 +63,7 @@ namespace Files_cloud_manager.Server.Services
             _filesInfos = _fileInfoGroup.Files.ToDictionary(e => e.RelativePath);
             return true;
         }
-        public bool CreateOrUpdateFile(string filePath, Stream originalFileStream)
+        public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream originalFileStream)
         {
             if (!_isSyncStarted || !CheckIfFileNameIsValid(filePath))
             {
@@ -93,7 +93,7 @@ namespace Files_cloud_manager.Server.Services
                 File.Move(fullPath, GetFullTmpPath(filePath));
             }
 
-            fileInfo.Hash = CreateFileFromStream(originalFileStream, fullPath).Result;
+            fileInfo.Hash = await CreateFileFromStreamAsync(originalFileStream, fullPath);
 
             if (!_filesInfos.ContainsKey(filePath))
             {
@@ -197,7 +197,7 @@ namespace Files_cloud_manager.Server.Services
         {
             return $"{_tmpFilesPath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{relativePath}";
         }
-        private async Task<byte[]> CreateFileFromStream(Stream originalFileStream, string path)
+        private async Task<byte[]> CreateFileFromStreamAsync(Stream originalFileStream, string path)
         {
             HashAlgorithm hashAlgorithm = _hashAlgFactory.Create();
             hashAlgorithm.Initialize();

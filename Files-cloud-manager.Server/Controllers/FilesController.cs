@@ -135,11 +135,11 @@ namespace Files_cloud_manager.Server.Controllers
         [RequestSizeLimit(10L * 1024L * 1024L * 1024L)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public IActionResult CreateOrUpdateFileInFileInfoGroup(int syncId, string filePath, IFormFile uploadedFile)
+        public async Task<IActionResult> CreateOrUpdateFileInFileInfoGroup(int syncId, string filePath, IFormFile uploadedFile)
         {
             using (Stream readStream = uploadedFile.OpenReadStream())
             {
-                if (_syncContainer.CreateOrUpdateFileInFileInfoGroup(GetUserId(), syncId, filePath, readStream))
+                if (await _syncContainer.CreateOrUpdateFileInFileInfoGroupAsync(GetUserId(), syncId, filePath, readStream))
                 {
                     return Ok();
                 }

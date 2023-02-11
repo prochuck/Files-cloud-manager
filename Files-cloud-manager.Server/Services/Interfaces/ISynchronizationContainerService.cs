@@ -4,7 +4,7 @@ namespace Files_cloud_manager.Server.Services.Interfaces
 {
     public interface ISynchronizationContainerService
     {
-        bool CreateOrUpdateFileInFileInfoGroup(int userId, int syncId, string filePath, Stream uploadedFile);
+        Task<bool> CreateOrUpdateFileInFileInfoGroupAsync(int userId, int syncId, string filePath, Stream uploadedFile);
         bool DeleteFileInFileInfoGroup(int userId, int syncId, string filePath);
         bool EndSynchronization(int userId, int syncId);
         Stream GetFile(int userId, int syncId, string filePath);
