@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 using Files_cloud_manager.Server.Configs;
 using Microsoft.Extensions.Configuration;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
     
@@ -42,13 +44,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     o.SlidingExpiration = true;
 });
 
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-
-
-
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(o =>
+{
+    o.CustomOperationIds(apiDesc =>
+    {
+        return apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null;
+    });
+});
 
 var app = builder.Build();
 
@@ -56,7 +59,10 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(o =>
+    {
+        o.DisplayOperationId();
+    });
 }
 
 app.UseHttpsRedirection();

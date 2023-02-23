@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Files-cloud-manager.Models\Files-cloud-manager.Models.csproj" />
+    <ProjectReference Include="..\FilesCloudAPIClient\FilesCloudAPIClient.csproj" />
   </ItemGroup>
 
 </Project>
