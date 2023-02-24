@@ -1,10 +1,10 @@
-﻿using Files_cloud_manager.Models.DTO;
+﻿using Files_cloud_manager.Server.Models.DTO;
 using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Models;
+using Files_cloud_manager.Server.Models;
 using Files_cloud_manager.Server.Services.Interfaces;
 using System.IO;
 using System.Security.Cryptography;
-using FileInfo = Files_cloud_manager.Models.FileInfo;
+using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
 using AutoMapper;
 using Files_cloud_manager.Server.Domain;
 using Microsoft.IdentityModel.Tokens;

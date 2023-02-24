@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
-using Files_cloud_manager.Models.DTO;
-using Files_cloud_manager.Models;
-using FileInfo = Files_cloud_manager.Models.FileInfo;
+using Files_cloud_manager.Server.Models.DTO;
+using Files_cloud_manager.Server.Models;
+using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
 
 namespace Files_cloud_manager.Server.Mapper
 {

@@ -1,5 +1,5 @@
-﻿using Files_cloud_manager.Models;
-using Files_cloud_manager.Models.DTO;
+﻿using Files_cloud_manager.Server.Models;
+using Files_cloud_manager.Server.Models.DTO;
 
 namespace Files_cloud_manager.Server.Services.Interfaces
 {

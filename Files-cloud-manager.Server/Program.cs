@@ -1,6 +1,6 @@
 using Files_cloud_manager.Server.Domain;
 using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Models;
+using Files_cloud_manager.Server.Models;
 using Files_cloud_manager.Server.Services;
 using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.DataProtection.Repositories;
@@ -42,6 +42,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 {
     o.ExpireTimeSpan = TimeSpan.FromMinutes(20);
     o.SlidingExpiration = true;
+    o.Events.OnRedirectToLogin = (context) =>
+    {
+        context.Response.StatusCode = 401;
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddEndpointsApiExplorer();

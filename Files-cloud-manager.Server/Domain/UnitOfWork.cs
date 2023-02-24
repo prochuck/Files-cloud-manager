@@ -1,7 +1,7 @@
 ﻿using Files_cloud_manager.Server.Domain.Interfaces;
-using Files_cloud_manager.Models;
+using Files_cloud_manager.Server.Models;
 using System.Collections.ObjectModel;
-using FileInfo = Files_cloud_manager.Models.FileInfo;
+using FileInfo = Files_cloud_manager.Server.Models.FileInfo;
 
 namespace Files_cloud_manager.Server.Domain
 {
