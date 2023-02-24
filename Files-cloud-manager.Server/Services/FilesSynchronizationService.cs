@@ -247,9 +247,11 @@ namespace Files_cloud_manager.Server.Services
                     {
                         File.Delete(GetFullPath(item));
                     }
-                    File.Move(GetFullTmpPath(item), GetFullPath(item));
+                    if (File.Exists(GetFullTmpPath(item)))
+                    {
+                        File.Move(GetFullTmpPath(item), GetFullPath(item));
+                    }
                 }
-
                 _isSyncStarted = false;
             }
             return true;
