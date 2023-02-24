@@ -81,7 +81,7 @@ namespace Files_cloud_manager.Server.Services
                 Timer = new Timer(TimeSpan.FromMinutes(rollBackTimeInMinutes).TotalMilliseconds),
                 objectLocker = new ReaderWriterLockSlim(),
             };
-            _syncContexts[id].Timer.Elapsed += (e, k) => RollBackSynchronization(userId, id);
+            syncContext.Timer.Elapsed += (e, k) => RollBackSynchronization(userId, id);
 
             lock (_createDeleteLock)
             {
@@ -89,7 +89,7 @@ namespace Files_cloud_manager.Server.Services
                 {
                     return -1;
                 }
-                _syncContexts[id].Timer.Start();
+                syncContext.Timer.Start();
             }
 
             return id;
