@@ -34,6 +34,7 @@ namespace Files_cloud_manager.Server.Services
 
         private object _syncLock = new object();
         private HashSet<string> _activeFileAcesses = new HashSet<string>();
+        private ConcurrentDictionary<string, CancellationTokenSource> _fileUploadsCancelationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
 
         public FilesSynchronizationService(IUnitOfWork unitOfWork,
             IOptions<FilesSyncServiceConfig> config,
@@ -81,6 +82,7 @@ namespace Files_cloud_manager.Server.Services
         /// <returns></returns>
         public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream originalFileStream)
         {
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
             lock (_activeFileAcesses)
             {
                 if (_activeFileAcesses.Contains(filePath))
@@ -94,7 +96,7 @@ namespace Files_cloud_manager.Server.Services
             {
                 return false;
             }
-
+            _fileUploadsCancelationTokens.TryAdd(filePath, cancellationTokenSource);
             _changedFiles.Add(filePath);
 
             string fullPath = GetFullPath(filePath);
@@ -118,8 +120,15 @@ namespace Files_cloud_manager.Server.Services
                 File.Move(fullPath, GetFullTmpPath(filePath));
             }
 
-            fileInfo.Hash = await CreateFileFromStreamAsync(originalFileStream, fullPath);
-
+            fileInfo.Hash = await CreateFileFromStreamAsync(originalFileStream, fullPath, cancellationTokenSource.Token);
+            if (cancellationTokenSource.IsCancellationRequested)
+            {
+                if (File.Exists(GetFullPath(filePath)))
+                {
+                    File.Delete(GetFullPath(filePath));
+                }
+                return false;
+            }
             if (!_filesInfos.ContainsKey(filePath))
             {
                 _filesInfos.Add(filePath, fileInfo);
@@ -129,6 +138,8 @@ namespace Files_cloud_manager.Server.Services
             {
                 _unitOfWork.FileInfoRepository.Update(fileInfo);
             }
+
+            _fileUploadsCancelationTokens.Remove(filePath, out _);
             return true;
         }
         /// <summary>
@@ -222,6 +233,11 @@ namespace Files_cloud_manager.Server.Services
                 {
                     return false;
                 }
+                if (!_fileUploadsCancelationTokens.IsEmpty)
+                {
+                    return false;
+                }
+
                 if (Directory.Exists(GetFullTmpPath("")))
                 {
                     Directory.Delete(GetFullTmpPath(""), true);
@@ -239,6 +255,11 @@ namespace Files_cloud_manager.Server.Services
                 if (!_isSyncStarted)
                 {
                     return false;
+                }
+
+                foreach (var item in _fileUploadsCancelationTokens)
+                {
+                    item.Value.Cancel();
                 }
 
                 foreach (string item in _changedFiles)
@@ -265,7 +286,7 @@ namespace Files_cloud_manager.Server.Services
         {
             return $"{_tmpFilesPath}/{_fileInfoGroup.Owner.Login}/{_fileInfoGroup.Name}/{relativePath}";
         }
-        private async Task<byte[]> CreateFileFromStreamAsync(Stream originalFileStream, string path)
+        private async Task<byte[]> CreateFileFromStreamAsync(Stream originalFileStream, string path, CancellationToken cancellationToken)
         {
             HashAlgorithm hashAlgorithm = _hashAlgFactory.Create();
             hashAlgorithm.Initialize();
@@ -274,7 +295,11 @@ namespace Files_cloud_manager.Server.Services
             using (FileStream fileStream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
             using (CryptoStream cryptoStream = new CryptoStream(fileStream, hashAlgorithm, CryptoStreamMode.Write))
             {
-                await originalFileStream.CopyToAsync(cryptoStream);
+                await originalFileStream.CopyToAsync(cryptoStream, cancellationToken);
+            }
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
             }
             return hashAlgorithm.Hash;
 
