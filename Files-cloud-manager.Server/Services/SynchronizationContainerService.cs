@@ -16,8 +16,8 @@ namespace Files_cloud_manager.Server.Services
         private ConcurrentDictionary<int, SyncContext> _syncContexts = new ConcurrentDictionary<int, SyncContext>();
         private HashSet<int> _usersWhithActiveSyncs = new HashSet<int>();
 
-        private int lastId = 0;
-        private object createDeleteLock = new object();
+        private int _lastId = 0;
+        private object _createDeleteLock = new object();
 
         IServiceProvider _serviceProvider;
 
@@ -48,15 +48,15 @@ namespace Files_cloud_manager.Server.Services
 
 
 
-            lock (createDeleteLock)
+            lock (_createDeleteLock)
             {
                 if (_usersWhithActiveSyncs.Contains(userId))
                 {
                     return -1;
                 }
                 _usersWhithActiveSyncs.Add(userId);
-                id = lastId;
-                lastId++;
+                id = _lastId;
+                _lastId++;
             }
 
             IServiceScope serviceScope = _serviceProvider.CreateScope();
@@ -65,7 +65,7 @@ namespace Files_cloud_manager.Server.Services
             if (!fileSyncService.StartSynchronization(userId, fileGroupName))
             {
                 serviceScope.Dispose();
-                lock (createDeleteLock)
+                lock (_createDeleteLock)
                 {
                     _usersWhithActiveSyncs.Remove(userId);
                 }
@@ -83,7 +83,7 @@ namespace Files_cloud_manager.Server.Services
             };
             _syncContexts[id].Timer.Elapsed += (e, k) => RollBackSynchronization(userId, id);
 
-            lock (createDeleteLock)
+            lock (_createDeleteLock)
             {
                 if (!_syncContexts.TryAdd(id, syncContext))
                 {
@@ -190,7 +190,7 @@ namespace Files_cloud_manager.Server.Services
         public bool EndSynchronization(int userId, int syncId)
         {
             SyncContext syncContext;
-            lock (createDeleteLock)
+            lock (_createDeleteLock)
             {
                 if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
                 {
@@ -219,7 +219,7 @@ namespace Files_cloud_manager.Server.Services
         public bool RollBackSynchronization(int userId, int syncId)
         {
             SyncContext syncContext;
-            lock (createDeleteLock)
+            lock (_createDeleteLock)
             {
                 if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
                 {
@@ -252,7 +252,7 @@ namespace Files_cloud_manager.Server.Services
         private SyncContext GetSyncContextAndEnterLock(int syncId, int userId, LockTypes lockType)
         {
             SyncContext syncContext;
-            lock (createDeleteLock)
+            lock (_createDeleteLock)
             {
                 if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
                 {
