@@ -2,6 +2,7 @@
 using Files_cloud_manager.Server.Models.DTO;
 using Files_cloud_manager.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualStudio.Threading;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Timers;
@@ -17,7 +18,7 @@ namespace Files_cloud_manager.Server.Services
         private HashSet<int> _usersWhithActiveSyncs = new HashSet<int>();
 
         private int _lastId = 0;
-        private object _createDeleteLock = new object();
+        private SemaphoreSlim _createDeleteLock = new SemaphoreSlim(1);
 
         IServiceProvider _serviceProvider;
 
@@ -28,7 +29,7 @@ namespace Files_cloud_manager.Server.Services
             public int UserId;
             public string FileGroupName;
             public Timer Timer;
-            public ReaderWriterLockSlim objectLocker;
+            public AsyncReaderWriterLock objectLocker;
         }
 
         public SynchronizationContainerService(IServiceProvider serviceProvider)
@@ -41,23 +42,26 @@ namespace Files_cloud_manager.Server.Services
         /// <param name="userId"></param>
         /// <param name="fileGroupName"></param>
         /// <returns>Id синхронизации. -1 если сессия синхронизации не началась.</returns>
-        public int StartNewSynchronization(int userId, string fileGroupName)
+        public async Task<int> StartNewSynchronizationAsync(int userId, string fileGroupName)
         {
-
             int id;
 
-
-
-            lock (_createDeleteLock)
+            await _createDeleteLock.WaitAsync();
+            try
             {
                 if (_usersWhithActiveSyncs.Contains(userId))
                 {
                     return -1;
                 }
-                _usersWhithActiveSyncs.Add(userId);
                 id = _lastId;
                 _lastId++;
+                _usersWhithActiveSyncs.Add(userId);
             }
+            finally
+            {
+                _createDeleteLock.Release();
+            }
+
 
             IServiceScope serviceScope = _serviceProvider.CreateScope();
             IFilesSynchronizationService fileSyncService = serviceScope.ServiceProvider.GetService<IFilesSynchronizationService>();
@@ -65,9 +69,14 @@ namespace Files_cloud_manager.Server.Services
             if (!fileSyncService.StartSynchronization(userId, fileGroupName))
             {
                 serviceScope.Dispose();
-                lock (_createDeleteLock)
+                await _createDeleteLock.WaitAsync();
+                try
                 {
                     _usersWhithActiveSyncs.Remove(userId);
+                }
+                finally
+                {
+                    _createDeleteLock.Release();
                 }
                 return -1;
             }
@@ -79,11 +88,12 @@ namespace Files_cloud_manager.Server.Services
                 ServiceScope = serviceScope,
                 FileSyncService = fileSyncService,
                 Timer = new Timer(TimeSpan.FromMinutes(rollBackTimeInMinutes).TotalMilliseconds),
-                objectLocker = new ReaderWriterLockSlim(),
+                objectLocker = new AsyncReaderWriterLock()
             };
-            syncContext.Timer.Elapsed += (e, k) => RollBackSynchronization(userId, id);
+            syncContext.Timer.Elapsed += (e, k) => RollBackSynchronizationAsync(userId, id);
 
-            lock (_createDeleteLock)
+            await _createDeleteLock.WaitAsync();
+            try
             {
                 if (!_syncContexts.TryAdd(id, syncContext))
                 {
@@ -91,62 +101,56 @@ namespace Files_cloud_manager.Server.Services
                 }
                 syncContext.Timer.Start();
             }
-
+            finally
+            {
+                _createDeleteLock.Release();
+            }
             return id;
         }
 
 
-        public List<FileInfoDTO> GetFilesInfos(int userId, int syncId)
+        public async Task<List<FileInfoDTO>> GetFilesInfosAsync(int userId, int syncId)
         {
-            SyncContext syncContext = GetSyncContextAndEnterLock(syncId, userId, LockTypes.ReadLock);
+
+            (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
             if (syncContext.Equals(default(SyncContext)))
             {
                 return null;
             }
-            try
+            using (releaser)
             {
                 syncContext.Timer.Stop();
                 syncContext.Timer.Start();
                 return syncContext.FileSyncService.GetFilesInfos();
             }
-            finally
-            {
-                syncContext.objectLocker.ExitReadLock();
-            }
         }
 
         public async Task<bool> CreateOrUpdateFileInFileInfoGroupAsync(int userId, int syncId, string filePath, Stream uploadedFile)
         {
-            SyncContext syncContext = GetSyncContextAndEnterLock(syncId, userId, LockTypes.ReadLock);
+            (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
             if (syncContext.Equals(default(SyncContext)))
             {
                 return false;
             }
-
-            try
+            using (releaser)
             {
-                syncContext.Timer.Stop();
+                syncContext.Timer.Start();
                 if (await syncContext.FileSyncService.CreateOrUpdateFileAsync(filePath, uploadedFile))
                 {
                     return true;
                 }
                 return false;
             }
-            finally
-            {
-                syncContext.Timer.Start();
-                syncContext.objectLocker.ExitReadLock();
-            }
         }
 
-        public bool DeleteFileInFileInfoGroup(int userId, int syncId, string filePath)
+        public async Task<bool> DeleteFileInFileInfoGroupAsync(int userId, int syncId, string filePath)
         {
-            SyncContext syncContext = GetSyncContextAndEnterLock(syncId, userId, LockTypes.ReadLock);
+            (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
             if (syncContext.Equals(default(SyncContext)))
             {
                 return false;
             }
-            try
+            using (releaser)
             {
                 if (syncContext.FileSyncService.DeleteFile(filePath))
                 {
@@ -156,29 +160,21 @@ namespace Files_cloud_manager.Server.Services
                 }
                 return false;
             }
-            finally
-            {
-                syncContext.objectLocker.ExitReadLock();
-            }
         }
 
-        public Stream GetFile(int userId, int syncId, string filePath)
+        public async Task<Stream> GetFileAsync(int userId, int syncId, string filePath)
         {
-            SyncContext syncContext = GetSyncContextAndEnterLock(syncId, userId, LockTypes.ReadLock);
+            (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
             if (syncContext.Equals(default(SyncContext)))
             {
                 return null;
             }
-            try
+            using (releaser)
             {
                 syncContext.Timer.Stop();
                 syncContext.Timer.Start();
                 Stream stream = syncContext.FileSyncService.GetFile(filePath);
                 return stream;
-            }
-            finally
-            {
-                syncContext.objectLocker.ExitReadLock();
             }
         }
         /// <summary>
@@ -187,18 +183,20 @@ namespace Files_cloud_manager.Server.Services
         /// <param name="userId"></param>
         /// <param name="syncId">Id синхронизации, полученный в методе StartNewSynchronization</param>
         /// <returns></returns>
-        public bool EndSynchronization(int userId, int syncId)
+        public async Task<bool> EndSynchronizationAsync(int userId, int syncId)
         {
             SyncContext syncContext;
-            lock (_createDeleteLock)
+
+            await _createDeleteLock.WaitAsync();
+            try
             {
                 if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
                 {
                     return false;
                 }
-                try
+
+                using (await syncContext.objectLocker.WriteLockAsync())
                 {
-                    syncContext.objectLocker.EnterWriteLock();
                     if (syncContext.FileSyncService.EndSynchronization())
                     {
                         syncContext.Timer.Dispose();
@@ -208,26 +206,27 @@ namespace Files_cloud_manager.Server.Services
                         return true;
                     }
                 }
-                finally
-                {
-                    syncContext.objectLocker.ExitWriteLock();
-                }
+            }
+            finally
+            {
+                _createDeleteLock.Release();
             }
             return false;
         }
 
-        public bool RollBackSynchronization(int userId, int syncId)
+        public async Task<bool> RollBackSynchronizationAsync(int userId, int syncId)
         {
             SyncContext syncContext;
-            lock (_createDeleteLock)
+            await _createDeleteLock.WaitAsync();
+            try
             {
                 if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
                 {
                     return false;
                 }
-                try
+
+                using (await syncContext.objectLocker.WriteLockAsync())
                 {
-                    syncContext.objectLocker.EnterWriteLock();
                     if (syncContext.FileSyncService.RollBackSynchronization())
                     {
                         syncContext.Timer.Stop();
@@ -237,10 +236,11 @@ namespace Files_cloud_manager.Server.Services
                         return true;
                     }
                 }
-                finally
-                {
-                    syncContext.objectLocker.ExitWriteLock();
-                }
+
+            }
+            finally
+            {
+                _createDeleteLock.Release();
             }
             return false;
         }
@@ -249,31 +249,36 @@ namespace Files_cloud_manager.Server.Services
         {
             ReadLock, WriteLock, UpgradeableLock
         }
-        private SyncContext GetSyncContextAndEnterLock(int syncId, int userId, LockTypes lockType)
+        private async Task<(AsyncReaderWriterLock.Releaser, SyncContext)> EnterSyncLock(int syncId, int userId, LockTypes lockType)
         {
             SyncContext syncContext;
-            lock (_createDeleteLock)
+            await _createDeleteLock.WaitAsync();
+            try
             {
                 if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
                 {
-                    return default(SyncContext);
+                    return (default(AsyncReaderWriterLock.Releaser), default(SyncContext));
                 }
                 switch (lockType)
                 {
                     case LockTypes.ReadLock:
-                        syncContext.objectLocker.EnterReadLock();
+                        return (await syncContext.objectLocker.ReadLockAsync(), syncContext);
                         break;
                     case LockTypes.WriteLock:
-                        syncContext.objectLocker.EnterWriteLock();
+                        return (await syncContext.objectLocker.ReadLockAsync(), syncContext);
                         break;
                     case LockTypes.UpgradeableLock:
-                        syncContext.objectLocker.EnterUpgradeableReadLock();
+                        return (await syncContext.objectLocker.UpgradeableReadLockAsync(), syncContext);
                         break;
                     default:
                         break;
                 }
             }
-            return syncContext;
+            finally
+            {
+                _createDeleteLock.Release();
+            }
+            return (default(AsyncReaderWriterLock.Releaser), default(SyncContext));
         }
 
     }

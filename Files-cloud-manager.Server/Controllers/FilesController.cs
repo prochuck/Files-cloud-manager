@@ -37,12 +37,12 @@ namespace Files_cloud_manager.Server.Controllers
         /// </summary>
         /// <param name="fileInfoGroupName"></param>
         /// <returns></returns>
-        [HttpPost]
+        [HttpPost(Name = "startSynchronization")]
         [ProducesResponseType(typeof(int), 200)]
         [ProducesResponseType(400)]
-        public IActionResult StartSynchronization(string fileInfoGroupName)
+        public async Task<IActionResult> StartSynchronizationAsync(string fileInfoGroupName)
         {
-            int syncId = _syncContainer.StartNewSynchronization(GetUserId(), fileInfoGroupName);
+            int syncId = await _syncContainer.StartNewSynchronizationAsync(GetUserId(), fileInfoGroupName);
             if (syncId != -1)
             {
                 return Ok(syncId);
@@ -51,34 +51,34 @@ namespace Files_cloud_manager.Server.Controllers
 
         }
 
-        [HttpPost]
+        [HttpPost(Name = "endSynchronization")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public IActionResult EndSynchronization(int syncId)
+        public async Task<IActionResult> EndSynchronizationAsync(int syncId)
         {
-            if (_syncContainer.EndSynchronization(GetUserId(), syncId))
+            if (await _syncContainer.EndSynchronizationAsync(GetUserId(), syncId))
             {
                 return Ok();
             }
             return BadRequest();
         }
 
-        [HttpPost]
+        [HttpPost(Name = "rollBackSynchronization")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public IActionResult RollBackSynchronization(int syncId)
+        public async Task<IActionResult> RollBackSynchronizationAsync(int syncId)
         {
-            if (_syncContainer.RollBackSynchronization(GetUserId(), syncId))
+            if (await _syncContainer.RollBackSynchronizationAsync(GetUserId(), syncId))
             {
                 return Ok();
             }
             return BadRequest();
         }
 
-        [HttpGet]
+        [HttpGet(Name = "getFoldersList")]
         [ProducesResponseType(typeof(IList<FileInfoGroupDTO>), 200)]
         [ProducesResponseType(400)]
-        public IActionResult GetFoldersList()
+        public IActionResult GetFoldersListAsync()
         {
             return Ok(_unitOfWork.FileInfoGroupRepostiory.Get(e => e.OwnerId == GetUserId())
                 .Select(e => _mapper.Map<FileInfoGroup, FileInfoGroupDTO>(e)).ToList());
@@ -87,12 +87,12 @@ namespace Files_cloud_manager.Server.Controllers
         /// Получение списка файлов и их хэшей
         /// </summary>
         /// <returns></returns>
-        [HttpGet]
+        [HttpGet(Name = "getFolderContent")]
         [ProducesResponseType(typeof(IList<FileInfoDTO>), 200)]
         [ProducesResponseType(400)]
-        public IActionResult GetFolderContent(int syncId)
+        public async Task<IActionResult> GetFolderContentAsync(int syncId)
         {
-            List<FileInfoDTO> files = _syncContainer.GetFilesInfos(GetUserId(), syncId);
+            List<FileInfoDTO> files = await _syncContainer.GetFilesInfosAsync(GetUserId(), syncId);
             if (files is not null)
             {
                 return Ok(files);
@@ -105,7 +105,7 @@ namespace Files_cloud_manager.Server.Controllers
         /// </summary>
         /// <param name="fileInfoGroupName"></param>
         /// <returns></returns>\
-        [HttpPost]
+        [HttpPost(Name = "createFileInfoGroup")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public IActionResult CreateFileInfoGroup(string fileInfoGroupName)
@@ -130,12 +130,12 @@ namespace Files_cloud_manager.Server.Controllers
             return Ok();
         }
 
-        [HttpPost]
+        [HttpPost(Name = "createOrUpdateFileInFileInfoGroup")]
         [RequestFormLimits(MultipartBodyLengthLimit = 10L * 1024L * 1024L * 1024L)]
         [RequestSizeLimit(10L * 1024L * 1024L * 1024L)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> CreateOrUpdateFileInFileInfoGroup(int syncId, string filePath, IFormFile uploadedFile)
+        public async Task<IActionResult> CreateOrUpdateFileInFileInfoGroupAsync(int syncId, string filePath, IFormFile uploadedFile)
         {
             using (Stream readStream = uploadedFile.OpenReadStream())
             {
@@ -147,24 +147,24 @@ namespace Files_cloud_manager.Server.Controllers
             return BadRequest();
         }
 
-        [HttpPost]
+        [HttpPost(Name = "deleteFileInFileInfoGroup")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public IActionResult DeleteFileInFileInfoGroup(int syncId, string filePath)
+        public async Task<IActionResult> DeleteFileInFileInfoGroupAsync(int syncId, string filePath)
         {
-            if (_syncContainer.DeleteFileInFileInfoGroup(GetUserId(), syncId, filePath))
+            if (await _syncContainer.DeleteFileInFileInfoGroupAsync(GetUserId(), syncId, filePath))
             {
                 return Ok();
             }
             return BadRequest();
         }
 
-        [HttpGet]
+        [HttpGet(Name = "getFile")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public IActionResult GetFile(int syncId, string filePath)
+        public async Task<IActionResult> GetFileAsync(int syncId, string filePath)
         {
-            Stream stream = _syncContainer.GetFile(GetUserId(), syncId, filePath);
+            Stream stream = await _syncContainer.GetFileAsync(GetUserId(), syncId, filePath);
             if (stream is not null)
             {
                 return File(stream, "application/octet-stream", Path.GetFileName(filePath));

@@ -5,11 +5,11 @@ namespace Files_cloud_manager.Server.Services.Interfaces
     public interface ISynchronizationContainerService
     {
         Task<bool> CreateOrUpdateFileInFileInfoGroupAsync(int userId, int syncId, string filePath, Stream uploadedFile);
-        bool DeleteFileInFileInfoGroup(int userId, int syncId, string filePath);
-        bool EndSynchronization(int userId, int syncId);
-        Stream GetFile(int userId, int syncId, string filePath);
-        List<FileInfoDTO> GetFilesInfos(int userId, int syncId);
-        bool RollBackSynchronization(int userId, int syncId);
-        int StartNewSynchronization(int userId, string fileGroupName);
+        Task<bool> DeleteFileInFileInfoGroupAsync(int userId, int syncId, string filePath);
+        Task<bool> EndSynchronizationAsync(int userId, int syncId);
+        Task<Stream> GetFileAsync(int userId, int syncId, string filePath);
+        Task<List<FileInfoDTO>> GetFilesInfosAsync(int userId, int syncId);
+        Task<bool> RollBackSynchronizationAsync(int userId, int syncId);
+        Task<int> StartNewSynchronizationAsync(int userId, string fileGroupName);
     }
 }
