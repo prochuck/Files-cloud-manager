@@ -8,6 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Files_cloud_manager.Server.Domain;
+using System.Data;
+using static Files_cloud_manager.Server.Domain.AppDBContext;
+using System.ComponentModel.DataAnnotations;
 
 namespace Files_cloud_manager.Server.Controllers
 {
@@ -22,6 +26,7 @@ namespace Files_cloud_manager.Server.Controllers
             _unitOfWork = unitOfWork;
         }
 
+        [RequireHttps]
         [HttpPost]
         public async Task<IActionResult> Login(string login, string password)
         {
@@ -37,7 +42,6 @@ namespace Files_cloud_manager.Server.Controllers
                     new Claim(ClaimTypes.Role,user.Role.RoleName)
                 };
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
                 return Ok();
             }
@@ -51,14 +55,10 @@ namespace Files_cloud_manager.Server.Controllers
             return Ok();
         }
 
-        [HttpGet]
-        [Authorize(Roles = "Admin")]
-        public IActionResult RegisterUser()
-        {
-            return View();
-        }
+
 
         [HttpPost]
+        [RequireHttps]
         [Authorize(Roles = "Admin")]
         public IActionResult RegisterUser(string login, string password, int roleId)
         {
@@ -79,10 +79,91 @@ namespace Files_cloud_manager.Server.Controllers
                 {
                     Login = login,
                     PasswordHash = _hashAlgFactory.Create().ComputeHash(password.Select(e => (byte)e).ToArray()),
-                    RoleId = roleId
+                    RoleId = roleId,
+                    UserFoldersPath = login
                 });
             _unitOfWork.Save();
-            return View();
+            return Ok();
         }
+        [HttpPost]
+        [RequireHttps]
+        [Authorize]
+        public IActionResult ChangePassword(string oldPassword, string password)
+        {
+            User? user = _unitOfWork.UserRepository.Find(GetUserId());
+            if (user is null)
+                return BadRequest("Пользователь не найден");
+            if (!_hashAlgFactory.Create().ComputeHash(oldPassword.Select(e => (byte)e).ToArray()).SequenceEqual(user.PasswordHash))
+            {
+                return BadRequest("Старый пароль введён не верно");
+            }
+
+            if (!(password.Count() > 2 && password.Count() < 30 && password.All(c => char.IsLetterOrDigit(c))))
+            {
+                return BadRequest("Новый пароль должен содержать только буквы и цифры и быть длиной от 8 до 30");
+            }
+
+            user.PasswordHash = _hashAlgFactory.Create().ComputeHash(password.Select(e => (byte)e).ToArray());
+            _unitOfWork.UserRepository.Update(user);
+            _unitOfWork.Save();
+            return Ok();
+        }
+        [HttpPost]
+        [RequireHttps]
+        [Authorize(Roles = "Admin")]
+        public IActionResult ChangeUserPassword(string userLogin, string password)
+        {
+            User? user = _unitOfWork.UserRepository.Find(userLogin);
+            if (user is null)
+                return BadRequest("Пользователь не найден");
+            user.PasswordHash = password.Select(e => (byte)e).ToArray();
+            _unitOfWork.UserRepository.Update(user);
+            _unitOfWork.Save();
+            return Ok();
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public IActionResult DeleteUser(string userLogin)
+        {
+            User? user = _unitOfWork.UserRepository.Find(userLogin);
+            if (user is null)
+                return BadRequest("Пользователь не найден");
+            _unitOfWork.UserRepository.Delete(user);
+            _unitOfWork.Save();
+            return Ok();
+        }
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public IActionResult ChangeRole(string userLogin, int roleId)
+        {
+            User? user = _unitOfWork.UserRepository.Find(userLogin);
+
+            Role newRole = _unitOfWork.RoleRepository.Get(e => e.Id == roleId).FirstOrDefault();
+            if (newRole is null)
+            {
+                return BadRequest("Запрошена не существующая роль.");
+            }
+            user.Role = newRole;
+
+            _unitOfWork.UserRepository.Update(user);
+            _unitOfWork.Save();
+            return Ok($"Пользователю установлена роль {newRole.RoleName}");
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> RefreshCoockie()
+        {
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(User.Identity));
+            return Ok();
+        }
+
+        [NonAction]
+        private int GetUserId()
+        {
+            return int.Parse(User.Claims.First(e => e.Type == ClaimTypes.NameIdentifier).Value);
+        }
+
     }
 }
