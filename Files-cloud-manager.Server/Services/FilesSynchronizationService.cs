@@ -10,6 +10,7 @@ using Files_cloud_manager.Server.Domain;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
 using Files_cloud_manager.Server.Configs;
+using System.Collections.Concurrent;
 
 namespace Files_cloud_manager.Server.Services
 {
@@ -31,11 +32,12 @@ namespace Files_cloud_manager.Server.Services
         private IMapper _mapper;
         private IUnitOfWork _unitOfWork;
 
-
+        private object _syncLock = new object();
+        private HashSet<string> _activeFileAcesses = new HashSet<string>();
 
         public FilesSynchronizationService(IUnitOfWork unitOfWork,
-            IOptions<FilesSyncServiceConfig> config, 
-            IMapper mapper, 
+            IOptions<FilesSyncServiceConfig> config,
+            IMapper mapper,
             IHashAlgorithmFactory hashAlgFactory)
         {
             _unitOfWork = unitOfWork;
@@ -49,22 +51,45 @@ namespace Files_cloud_manager.Server.Services
 
         public bool StartSynchronization(int userId, string fileInfoGroupName)
         {
-            _fileInfoGroup = _unitOfWork.FileInfoGroupRepostiory.Get(
-                    e => e.Name == fileInfoGroupName && e.OwnerId == userId,
-                    new string[] { nameof(_fileInfoGroup.Files), nameof(_fileInfoGroup.Owner) }
-            ).FirstOrDefault();
-
-            if (_fileInfoGroup is null || _fileInfoGroup.OwnerId != userId)
+            lock (_syncLock)
             {
-                return false;
-            }
+                if (_isSyncStarted == true)
+                {
+                    return false;
+                }
+                _fileInfoGroup = _unitOfWork.FileInfoGroupRepostiory.Get(
+                        e => e.Name == fileInfoGroupName && e.OwnerId == userId,
+                        new string[] { nameof(_fileInfoGroup.Files), nameof(_fileInfoGroup.Owner) }
+                ).FirstOrDefault();
 
-            _isSyncStarted = true;
-            _filesInfos = _fileInfoGroup.Files.ToDictionary(e => e.RelativePath);
-            return true;
+                if (_fileInfoGroup is null || _fileInfoGroup.OwnerId != userId)
+                {
+                    return false;
+                }
+
+                _isSyncStarted = true;
+                _filesInfos = _fileInfoGroup.Files.ToDictionary(e => e.RelativePath);
+                return true;
+            }
         }
+        /// <summary>
+        /// Создание или изменение файла, находящегося на пути.
+        /// Один файл может быть изменён или создан лишь 1 раз за синхронизацию.
+        /// </summary>
+        /// <param name="filePath">Путь к файлу.</param>
+        /// <param name="originalFileStream">Поток файлу.</param>
+        /// <returns></returns>
         public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream originalFileStream)
         {
+            lock (_activeFileAcesses)
+            {
+                if (_activeFileAcesses.Contains(filePath))
+                {
+                    return false;
+                }
+                _activeFileAcesses.Add(filePath);
+            }
+
             if (!_isSyncStarted || !CheckIfFileNameIsValid(filePath))
             {
                 return false;
@@ -106,8 +131,22 @@ namespace Files_cloud_manager.Server.Services
             }
             return true;
         }
+        /// <summary>
+        /// Удаление файла. Каждый путь может быть использован только 1 раз.
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
         public bool DeleteFile(string filePath)
         {
+            lock (_activeFileAcesses)
+            {
+                if (_activeFileAcesses.Contains(filePath))
+                {
+                    return false;
+                }
+                _activeFileAcesses.Add(filePath);
+            }
+
             if (!_isSyncStarted)
             {
                 return false;
@@ -132,21 +171,44 @@ namespace Files_cloud_manager.Server.Services
 
             return true;
         }
+        /// <summary>
+        /// Чтение файла.
+        /// Файлы, которые были изменены в процессе синхронизации прочитать не получится.
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
         public Stream GetFile(string filePath)
         {
-
-            if (!_filesInfos.ContainsKey(filePath))
+            lock (_activeFileAcesses)
             {
+                if (_activeFileAcesses.Contains(filePath))
+                {
+                    return null;
+                }
+                _activeFileAcesses.Add(filePath);
+            }
+            try
+            {
+                if (!_filesInfos.ContainsKey(filePath))
+                {
+                    return null;
+                }
+
+                string fullPath = GetFullPath(filePath);
+
+                if (File.Exists(fullPath))
+                {
+                    return new FileStream(fullPath, FileMode.Open);
+                }
                 return null;
             }
-
-            string fullPath = GetFullPath(filePath);
-
-            if (File.Exists(fullPath))
+            finally
             {
-                return new FileStream(fullPath, FileMode.Open);
+                lock (_activeFileAcesses)
+                {
+                    _activeFileAcesses.Remove(filePath);
+                }
             }
-            return null;
         }
         public List<FileInfoDTO> GetFilesInfos()
         {
@@ -154,38 +216,42 @@ namespace Files_cloud_manager.Server.Services
         }
         public bool EndSynchronization()
         {
-            // todo Добавить фиксацию созданных файлов, и возможность отката
-            if (!_isSyncStarted)
+            lock (_syncLock)
             {
-                return false;
-            }
-            if (Directory.Exists(GetFullTmpPath("")))
-            {
-                Directory.Delete(GetFullTmpPath(""), true);
-            }
+                if (!_isSyncStarted)
+                {
+                    return false;
+                }
+                if (Directory.Exists(GetFullTmpPath("")))
+                {
+                    Directory.Delete(GetFullTmpPath(""), true);
+                }
 
-            _unitOfWork.Save();
-            _isSyncStarted = false;
-            return true;
+                _unitOfWork.Save();
+                _isSyncStarted = false;
+                return true;
+            }
         }
         public bool RollBackSynchronization()
         {
-            if (!_isSyncStarted)
+            lock (_syncLock)
             {
-                return false;
-            }
-
-            foreach (string item in _changedFiles)
-            {
-                if (File.Exists(GetFullPath(item)))
+                if (!_isSyncStarted)
                 {
-                    File.Delete(GetFullPath(item));
+                    return false;
                 }
-                File.Move(GetFullTmpPath(item), GetFullPath(item));
+
+                foreach (string item in _changedFiles)
+                {
+                    if (File.Exists(GetFullPath(item)))
+                    {
+                        File.Delete(GetFullPath(item));
+                    }
+                    File.Move(GetFullTmpPath(item), GetFullPath(item));
+                }
+
+                _isSyncStarted = false;
             }
-
-            _isSyncStarted = false;
-
             return true;
         }
 
