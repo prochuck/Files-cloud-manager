@@ -16,9 +16,10 @@ using Files_cloud_manager.Server.Configs;
 using Microsoft.Extensions.Configuration;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
-    
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -32,16 +33,19 @@ builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 
 builder.Services.Configure<FilesSyncServiceConfig>(builder.Configuration.GetSection(nameof(FilesSyncServiceConfig)));
 
-builder.Services.AddSingleton<IHashAlgorithmFactory,SHA256Factory>();
+builder.Services.AddSingleton<IHashAlgorithmFactory, SHA256Factory>();
 builder.Services.AddScoped<IFilesSynchronizationService, FilesSynchronizationService>();
-builder.Services.AddSingleton<ISynchronizationContainerService,SynchronizationContainerService>();
+builder.Services.AddSingleton<ISynchronizationContainerService, SynchronizationContainerService>();
 
 builder.Services.AddAutoMapper(typeof(FileInfoMapperProfile), typeof(FileInfoGroupMapperProfile));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
 {
-    o.ExpireTimeSpan = TimeSpan.FromMinutes(20);
+    o.ExpireTimeSpan = TimeSpan.FromMinutes(1);
+    o.Cookie.Name = "FileCloudCoockie";
+    o.Cookie.MaxAge = o.ExpireTimeSpan;
     o.SlidingExpiration = true;
+    o.ReturnUrlParameter = CookieAuthenticationDefaults.ReturnUrlParameter;
     o.Events.OnRedirectToLogin = (context) =>
     {
         context.Response.StatusCode = 401;
@@ -69,7 +73,6 @@ if (app.Environment.IsDevelopment())
         o.DisplayOperationId();
     });
 }
-
 app.UseHttpsRedirection();
 
 app.UseAuthentication();

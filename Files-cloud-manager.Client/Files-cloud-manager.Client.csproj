@@ -14,6 +14,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.5.22" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FilesCloudAPIClient\FilesCloudAPIClient.csproj" />
   </ItemGroup>
 

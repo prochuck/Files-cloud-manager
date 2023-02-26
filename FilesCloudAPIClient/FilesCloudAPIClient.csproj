@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <OpenApiReference Include="OpenAPIs\swagger.json" CodeGenerator="NSwagCSharp" Namespace="FileCloudAPINameSpace">
+    <OpenApiReference Include="OpenAPIs\swagger1.json" CodeGenerator="NSwagCSharp" Namespace="FileCloudAPINameSpace" ClassName="FileCloudAPIClient">
       <SourceUri>https://localhost:7216/swagger/v1/swagger.json</SourceUri>
     </OpenApiReference>
   </ItemGroup>

@@ -1,4 +1,5 @@
-﻿using Files_cloud_manager.Models.DTO;
+﻿using FileCloudAPINameSpace;
+using Files_cloud_manager.Client.Services;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -18,9 +19,35 @@ namespace Files_cloud_manager.Client.Models
         public string PathToExe { get; set; }
         public string PathToData { get; set; }
 
+        private ServerConnectionService _connectionService;
 
+        public ProgramDataModel(ServerConnectionService connectionService)
+        {
+            _connectionService = connectionService;
+        }
 
-        public async IAsyncEnumerable<string> GetHashDifferencesAsync(List<FileInfoDTO> fileInfos)
+        public async Task<List<FileDifferenceModel>> CompareLocalFilesToServer()
+        {
+            int id = await _connectionService.StartSyncAsync("fol1").ConfigureAwait(false);
+            if (id == -1)
+            {
+                return null;
+            }
+            List<FileInfoDTO> serverFiles = await _connectionService.GetFiles(id).ConfigureAwait(false) as List<FileInfoDTO>;
+            if (serverFiles is null)
+            {
+                return null;
+            }
+            List<FileDifferenceModel> res = new List<FileDifferenceModel>();
+            await foreach (var item in GetHashDifferencesAsync(serverFiles).ConfigureAwait(false))
+            {
+                res.Add(item);
+            }
+            return res;
+        }
+
+        //todo вынести приколы с файлами в отдельный сервис
+        private async IAsyncEnumerable<FileDifferenceModel> GetHashDifferencesAsync(List<FileInfoDTO> fileInfos)
         {
             Dictionary<string, FileInfoDTO> pathToFileInfos = fileInfos.ToDictionary(e => e.RelativePath, e => e);
 
@@ -30,7 +57,14 @@ namespace Files_cloud_manager.Client.Models
             {
                 if (!pathToFileInfos.ContainsKey(item))
                 {
-                    yield return item;
+                    yield return new FileDifferenceModel()
+                    {
+                        File = new FileInfoDTO()
+                        {
+                            RelativePath = item
+                        },
+                        State = FileState.Created
+                    };
                     continue;
                 }
 
@@ -38,16 +72,15 @@ namespace Files_cloud_manager.Client.Models
 
                 if (!bytes.SequenceEqual(pathToFileInfos[item].Hash))
                 {
-                    yield return item;
+                    yield return new FileDifferenceModel() { File = pathToFileInfos[item], State = FileState.Modified };
                     pathToFileInfos.Remove(item);
                     continue;
                 }
             }
             foreach (var item in pathToFileInfos)
             {
-                yield return item.Key;
+                yield return new FileDifferenceModel() { File = item.Value, State = FileState.Deleted };
             }
-
         }
         private IEnumerable<string> EnumerateAllFiles(string path)
         {
