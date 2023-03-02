@@ -99,22 +99,22 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<int> StartSyncAsync(string groupName)
+        public async Task<int> StartSynchronizationAsync(string groupName)
         {
             int res = -1;
             using (await _coockieLock.ReadLockAsync())
             {
-               
+
                 try
                 {
-                    res = await _swaggerClient.StartSynchronizationAsync(groupName);
                     
+                    return await _swaggerClient.StartSynchronizationAsync(groupName);
                 }
                 catch
                 {
-                    res = -1;
+                    return -1;
                 }
-                
+
             }
             return res;
         }
@@ -134,7 +134,21 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-
+        public async Task<bool> RollBackSync(int syncId)
+        {
+            using (await _coockieLock.ReadLockAsync())
+            {
+                try
+                {
+                    await _swaggerClient.RollBackSynchronizationAsync(syncId);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
 
 
         private string CreateQuery(string requestUri, Dictionary<string, string> keysValuesForQuery)
