@@ -41,7 +41,7 @@ builder.Services.AddAutoMapper(typeof(FileInfoMapperProfile), typeof(FileInfoGro
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
 {
-    o.ExpireTimeSpan = TimeSpan.FromMinutes(1);
+    o.ExpireTimeSpan = TimeSpan.FromHours(1);
     o.Cookie.Name = "FileCloudCoockie";
     o.Cookie.MaxAge = o.ExpireTimeSpan;
     o.SlidingExpiration = true;

@@ -87,10 +87,10 @@ namespace Files_cloud_manager.Server.Controllers
         /// Получение списка файлов и их хэшей
         /// </summary>
         /// <returns></returns>
-        [HttpGet(Name = "getFolderContent")]
+        [HttpGet(Name = "getFileInfoGroupContentAsync")]
         [ProducesResponseType(typeof(IList<FileInfoDTO>), 200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> GetFolderContentAsync(int syncId)
+        public async Task<IActionResult> GetFileInfoGroupContentAsync(int syncId)
         {
             List<FileInfoDTO> files = await _syncContainer.GetFilesInfosAsync(GetUserId(), syncId);
             if (files is not null)
@@ -130,16 +130,17 @@ namespace Files_cloud_manager.Server.Controllers
             return Ok();
         }
 
-        [HttpPost(Name = "createOrUpdateFileInFileInfoGroup")]
+        //transfer-encoding chunked asp.net
+        [HttpPost(Name = "createOrUpdateFile")]
         [RequestFormLimits(MultipartBodyLengthLimit = 10L * 1024L * 1024L * 1024L)]
         [RequestSizeLimit(10L * 1024L * 1024L * 1024L)]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> CreateOrUpdateFileInFileInfoGroupAsync(int syncId, string filePath, IFormFile uploadedFile)
+        public async Task<IActionResult> CreateOrUpdateFileAsync(int SyncId, string FilePath, [FromForm] FileUploadModel fileUploadModel)
         {
-            using (Stream readStream = uploadedFile.OpenReadStream())
+            using (Stream readStream = fileUploadModel.UploadedFile.OpenReadStream())
             {
-                if (await _syncContainer.CreateOrUpdateFileInFileInfoGroupAsync(GetUserId(), syncId, filePath, readStream))
+                if (await _syncContainer.CreateOrUpdateFileAsync(GetUserId(), SyncId, FilePath, readStream))
                 {
                     return Ok();
                 }
@@ -147,20 +148,22 @@ namespace Files_cloud_manager.Server.Controllers
             return BadRequest();
         }
 
-        [HttpPost(Name = "deleteFileInFileInfoGroup")]
+        [HttpPost(Name = "deleteFile")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> DeleteFileInFileInfoGroupAsync(int syncId, string filePath)
+        public async Task<IActionResult> DeleteFileAsync(int syncId, string filePath)
         {
-            if (await _syncContainer.DeleteFileInFileInfoGroupAsync(GetUserId(), syncId, filePath))
+            if (await _syncContainer.DeleteFileAsync(GetUserId(), syncId, filePath))
             {
                 return Ok();
             }
             return BadRequest();
         }
 
+
         [HttpGet(Name = "getFile")]
-        [ProducesResponseType(200)]
+        [Produces("application/octet-stream")]
+        [ProducesResponseType(typeof(FileStreamResult), 200)]
         [ProducesResponseType(400)]
         public async Task<IActionResult> GetFileAsync(int syncId, string filePath)
         {

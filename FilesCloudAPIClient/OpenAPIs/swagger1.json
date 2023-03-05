@@ -414,12 +414,12 @@
         }
       }
     },
-    "/api/Files/GetFolderContent": {
+    "/api/Files/GetFileInfoGroupContent": {
       "get": {
         "tags": [
           "Files"
         ],
-        "operationId": "GetFolderContentAsync",
+        "operationId": "GetFileInfoGroupContentAsync",
         "parameters": [
           {
             "name": "syncId",
@@ -525,15 +525,15 @@
         }
       }
     },
-    "/api/Files/CreateOrUpdateFileInFileInfoGroup": {
+    "/api/Files/CreateOrUpdateFile": {
       "post": {
         "tags": [
           "Files"
         ],
-        "operationId": "CreateOrUpdateFileInFileInfoGroupAsync",
+        "operationId": "CreateOrUpdateFileAsync",
         "parameters": [
           {
-            "name": "syncId",
+            "name": "SyncId",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -541,7 +541,7 @@
             }
           },
           {
-            "name": "filePath",
+            "name": "FilePath",
             "in": "query",
             "schema": {
               "type": "string"
@@ -554,14 +554,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "uploadedFile": {
+                  "UploadedFile": {
                     "type": "string",
                     "format": "binary"
                   }
                 }
               },
               "encoding": {
-                "uploadedFile": {
+                "UploadedFile": {
                   "style": "form"
                 }
               }
@@ -595,12 +595,12 @@
         }
       }
     },
-    "/api/Files/DeleteFileInFileInfoGroup": {
+    "/api/Files/DeleteFile": {
       "post": {
         "tags": [
           "Files"
         ],
-        "operationId": "DeleteFileInFileInfoGroupAsync",
+        "operationId": "DeleteFileAsync",
         "parameters": [
           {
             "name": "syncId",
@@ -670,22 +670,20 @@
         ],
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Success",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
+              "application/octet-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }

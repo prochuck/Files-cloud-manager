@@ -17,6 +17,7 @@ namespace Files_cloud_manager.Server.Services
         private ConcurrentDictionary<int, SyncContext> _syncContexts = new ConcurrentDictionary<int, SyncContext>();
         private HashSet<int> _usersWhithActiveSyncs = new HashSet<int>();
 
+        // todo сделать что-то с потенциальным переполнением
         private int _lastId = 0;
         private SemaphoreSlim _createDeleteLock = new SemaphoreSlim(1);
 
@@ -125,7 +126,7 @@ namespace Files_cloud_manager.Server.Services
             }
         }
 
-        public async Task<bool> CreateOrUpdateFileInFileInfoGroupAsync(int userId, int syncId, string filePath, Stream uploadedFile)
+        public async Task<bool> CreateOrUpdateFileAsync(int userId, int syncId, string filePath, Stream uploadedFile)
         {
             (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
             if (syncContext.Equals(default(SyncContext)))
@@ -143,7 +144,7 @@ namespace Files_cloud_manager.Server.Services
             }
         }
 
-        public async Task<bool> DeleteFileInFileInfoGroupAsync(int userId, int syncId, string filePath)
+        public async Task<bool> DeleteFileAsync(int userId, int syncId, string filePath)
         {
             (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
             if (syncContext.Equals(default(SyncContext)))

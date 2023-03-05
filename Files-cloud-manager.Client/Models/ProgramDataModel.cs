@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Models
@@ -29,54 +30,113 @@ namespace Files_cloud_manager.Client.Models
             _fileHashCheckerService = fileHashCheckerService;
         }
 
-        public enum SyncDirection
+        
+        public async Task<bool> SynchronizeFiles(SyncDirection syncDirection)
         {
-            /// <summary>
-            /// Файлы сервера будут выбраны как актуальные.
-            /// </summary>
-            FromServer,
-            /// <summary>
-            /// Файлы клиента будут выбраны как актуальные.
-            /// </summary>
-            FromClient
-        }
-        public async Task SynchronizeFiles(List<FileDifferenceModel> fileDifferenceModels, SyncDirection syncDirection)
-        {
-            int syncId = await _connectionService.StartSynchronizationAsync(GroupName);
+            // todo добавить cancelToken.
+            int syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
+
+            if (syncId==-1)
+            {
+                return false; 
+            }
+
+            IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels = await CompareLocalFilesToServerAsync(syncId).ConfigureAwait(false);
+
             try
             {
-                foreach (var fileDiff in fileDifferenceModels)
+                List<Task> fileDonwloads = new List<Task>();
+                await foreach (var fileDiff in fileDifferenceModels.ConfigureAwait(false))
                 {
+                    fileDonwloads.Add(SynchronizeFile(syncDirection, fileDiff, syncId));
                 }
+
+                await Task.WhenAll(fileDonwloads).ConfigureAwait(false);
             }
-            catch (Exception)
+            catch
             {
-                _connectionService.RollBackSync(syncId);
+               await _connectionService.RollBackSync(syncId);
+                return false;
+            }
+            await _connectionService.EndSync(syncId);
+            return true;
+        }
+
+        public async Task<bool> SynchronizeFile(SyncDirection direction, FileDifferenceModel file, int syncId)
+        {
+            switch (direction)
+            {
+                case SyncDirection.FromServer:
+                    if (file.State != FileState.ServerOnly)
+                    {
+                        await Task.Run(() => File.Delete(GetFullDataPath(file.File.RelativePath))).ConfigureAwait(false);
+                    }
+                    if (file.State != FileState.ClientOnly)
+                    {
+                        Stream stream = await _connectionService.DonwloadFile(syncId, file.File.RelativePath).ConfigureAwait(false);
+
+                        using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath)))
+                        {
+                            await stream.CopyToAsync(newFile).ConfigureAwait(false);
+                        }
+                    }
+                    return true;
+                    break;
+                case SyncDirection.FromClient:
+                    if (file.State == FileState.ServerOnly)
+                    {
+                        return await _connectionService.DeleteFile(syncId, file.File.RelativePath).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        using (FileStream fileStream = new FileStream(
+                            GetFullDataPath(file.File.RelativePath),
+                            FileMode.Open, FileAccess.Read,
+                            FileShare.Read,
+                            4096,
+                            true))
+                        {
+                            return await _connectionService.CreateOrUpdateFile(syncId, file.File.RelativePath, fileStream);
+                        }
+                    }
+                    break;
+                default:
+                    return false;
+                    break;
             }
         }
-        private async Task<List<FileDifferenceModel>> CompareLocalFilesToServerAsync()
+
+        public async Task<IAsyncEnumerable<FileDifferenceModel>> CompareLocalFilesToServerAsync(int syncId)
         {
-            int id = await _connectionService.StartSynchronizationAsync("fol1").ConfigureAwait(false);
-            if (id == -1)
+            if (syncId == -1)
             {
                 return null;
             }
-            ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFiles(id).ConfigureAwait(false));
+            ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFiles(syncId).ConfigureAwait(false));
             if (serverFiles is null)
             {
                 return null;
             }
-            List<FileDifferenceModel> res = new List<FileDifferenceModel>();
-            await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData).ConfigureAwait(false))
-            {
-                res.Add(item);
-            }
-            return res;
+            return _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData);
         }
 
-
+        public string GetFullDataPath(string relativePath)
+        {
+            return $"{PathToData}/{relativePath}";
+        }
 
         //todo вынести приколы с файлами в отдельный сервис
 
+    }
+    public enum SyncDirection
+    {
+        /// <summary>
+        /// Файлы сервера будут выбраны как актуальные.
+        /// </summary>
+        FromServer,
+        /// <summary>
+        /// Файлы клиента будут выбраны как актуальные.
+        /// </summary>
+        FromClient
     }
 }

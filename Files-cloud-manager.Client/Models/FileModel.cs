@@ -18,7 +18,7 @@ namespace Files_cloud_manager.Client.Models
         /// <summary>
         /// Существует только на клиенте.
         /// </summary>
-        Created,
+        ClientOnly,
         /// <summary>
         /// Существует и на клиенте и на сервере, но файлы разные.
         /// </summary>
@@ -26,6 +26,6 @@ namespace Files_cloud_manager.Client.Models
         /// <summary>
         /// Существует только на сервере.
         /// </summary>
-        Deleted
+        ServerOnly
     }
 }

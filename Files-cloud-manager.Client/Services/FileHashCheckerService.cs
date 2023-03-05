@@ -28,7 +28,7 @@ namespace Files_cloud_manager.Client.Services
                         {
                             RelativePath = item
                         },
-                        State = FileState.Created
+                        State = FileState.ClientOnly
                     };
                     continue;
                 }
@@ -44,7 +44,7 @@ namespace Files_cloud_manager.Client.Services
             }
             foreach (var item in pathToFileInfos)
             {
-                yield return new FileDifferenceModel() { File = item.Value, State = FileState.Deleted };
+                yield return new FileDifferenceModel() { File = item.Value, State = FileState.ServerOnly };
             }
         }
         public IEnumerable<string> EnumerateAllFiles(string path)
