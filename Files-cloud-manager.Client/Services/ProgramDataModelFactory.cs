@@ -17,7 +17,7 @@ namespace Files_cloud_manager.Client.Services
             _serviceProvider = serviceProvider;
         }
 
-        public ProgramDataModel CreateProgramDataModelFactory(string login, string password)
+        public ProgramDataModel CreateProgramDataModel(string login, string password)
         {
             var connectionService = _serviceProvider.GetRequiredService<ServerConnectionService>();
             bool isLoginSuc = connectionService.LoginAsync(login, password).Result;
