@@ -3,6 +3,7 @@ using Files_cloud_manager.Client.Services;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -13,12 +14,15 @@ using System.Threading.Tasks;
 namespace Files_cloud_manager.Client.Models
 {
     //Алгоритмы хэширования приколы с ними
-    class ProgramDataModel : IDisposable
+    class ProgramDataModel : IDisposable, IValidatableObject
     {
         //todo сделать синхронизацию алгоритмов хэширования с сервером
         //todo добавить DI 
+        [Required]
         public string PathToExe { get; set; }
+        [Required]
         public string PathToData { get; set; }
+        [Required]
         public string GroupName { get; set; }
 
         private ServerConnectionService _connectionService;
@@ -143,7 +147,22 @@ namespace Files_cloud_manager.Client.Models
         {
             _connectionService.Dispose();
         }
+        // todo доделать
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (CheckIfFileNameIsValid(PathToExe)||!File.Exists(PathToExe))
+                yield return new ValidationResult("Путь к exe не верен");
+            if (CheckIfFileNameIsValid(PathToData)||!Directory.Exists(PathToData))
+                yield return new ValidationResult("Путь к данным не верен");
 
+
+        }
+        // todo сделать проверку имени файла лучше
+        private bool CheckIfFileNameIsValid(string name)
+        {
+            return !string.IsNullOrEmpty(name) &&
+                name.IndexOfAny(Path.GetInvalidPathChars()) < 0;
+        }
         //todo вынести приколы с файлами в отдельный сервис
 
     }
