@@ -21,13 +21,18 @@ namespace Files_cloud_manager.Client.Services
 
         public ProgramDataModel CreateProgramDataModel(string login, string password)
         {
-            var connectionService = _serviceProvider.GetRequiredService<ServerConnectionService>();
-            bool isLoginSuc = connectionService.LoginAsync(login, password).Result;
-
-            if (!isLoginSuc)
+            var connectionService = _serviceScope.ServiceProvider.GetRequiredService<ServerConnectionService>();
+            if (!connectionService.IsLoogedIn)
             {
-                return null;
+                bool isLoginSuc = connectionService.LoginAsync(login, password).Result;
+                if (!isLoginSuc)
+                {
+                    return null;
+                }
+                connectionService.IsLoogedIn = true;
             }
+
+           
             var res = new ProgramDataModel(connectionService, _serviceScope.ServiceProvider.GetRequiredService<FileHashCheckerService>());
 
             return res;

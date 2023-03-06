@@ -15,6 +15,8 @@ namespace Files_cloud_manager.Client.Services
     internal class ServerConnectionService : IDisposable, IServerConnectionService
     {
         //todo сделать что-то с syncId
+        public bool IsLoogedIn { get; set; } = false;
+
         private Uri _baseAddress = new Uri("https://localhost:7216");
         private CookieContainer _cookieContainer;
         private string _login;
@@ -59,7 +61,7 @@ namespace Files_cloud_manager.Client.Services
                     await _swaggerClient.LoginAsync(login, password).ConfigureAwait(false);
                     TimeSpan timeBeforeExpiration = _cookieContainer.GetAllCookies().Where(e => e.Name == "FileCloudCoockie").First().Expires.Subtract(DateTime.Now);
                     _tokenRefreshTimer = new Timer(timeBeforeExpiration.Divide(2).TotalMilliseconds);
-
+                    IsLoogedIn = true;
                     return true;
                 }
                 catch
@@ -67,6 +69,7 @@ namespace Files_cloud_manager.Client.Services
                     return false;
                 }
             }
+
         }
 
         public async Task<ICollection<FileInfoDTO>> GetFilesAsync(int syncId)
@@ -91,6 +94,7 @@ namespace Files_cloud_manager.Client.Services
                 try
                 {
                     await _swaggerClient.LogoutAsync().ConfigureAwait(false);
+                    IsLoogedIn = false;
                     return true;
                 }
                 catch
