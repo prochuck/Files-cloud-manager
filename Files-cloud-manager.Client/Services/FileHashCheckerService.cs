@@ -10,13 +10,13 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Services
 {
-    internal class FileHashCheckerService
+    internal class FileHashCheckerService : IFileHashCheckerService
     {
-        public async IAsyncEnumerable<FileDifferenceModel> GetHashDifferencesAsync(IEnumerable<FileInfoDTO> fileInfos,string basePath)
+        public async IAsyncEnumerable<FileDifferenceModel> GetHashDifferencesAsync(IEnumerable<FileInfoDTO> fileInfos, string pathToFiles)
         {
             Dictionary<string, FileInfoDTO> pathToFileInfos = fileInfos.ToDictionary(e => e.RelativePath, e => e);
 
-            IEnumerable<string> filesInDirectory = EnumerateAllFiles(basePath);
+            IEnumerable<string> filesInDirectory = EnumerateAllFiles(pathToFiles);
 
             foreach (var item in filesInDirectory)
             {
@@ -33,7 +33,7 @@ namespace Files_cloud_manager.Client.Services
                     continue;
                 }
 
-                byte[] bytes = await GetFileHashAsync(GetFullDataPath(basePath,item)).ConfigureAwait(false);
+                byte[] bytes = await GetFileHashAsync(GetFullDataPath(pathToFiles, item)).ConfigureAwait(false);
 
                 if (!bytes.SequenceEqual(pathToFileInfos[item].Hash))
                 {
@@ -47,7 +47,7 @@ namespace Files_cloud_manager.Client.Services
                 yield return new FileDifferenceModel() { File = item.Value, State = FileState.ServerOnly };
             }
         }
-        public IEnumerable<string> EnumerateAllFiles(string path)
+        private IEnumerable<string> EnumerateAllFiles(string path)
         {
             if (!Directory.Exists(path))
             {
@@ -82,7 +82,7 @@ namespace Files_cloud_manager.Client.Services
             }
 
         }
-        public async Task<byte[]> GetFileHashAsync(string path)
+        private async Task<byte[]> GetFileHashAsync(string path)
         {
             HashAlgorithm hashAlgorithm = SHA256.Create();
             using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
@@ -90,7 +90,7 @@ namespace Files_cloud_manager.Client.Services
                 return await hashAlgorithm.ComputeHashAsync(stream).ConfigureAwait(false);
             }
         }
-        public string GetFullDataPath(string basePath,string relativePath)
+        private string GetFullDataPath(string basePath, string relativePath)
         {
             return $"{basePath}/{relativePath}";
         }

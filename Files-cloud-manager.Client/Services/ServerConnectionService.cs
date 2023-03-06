@@ -11,7 +11,7 @@ using Timer = System.Timers.Timer;
 
 namespace Files_cloud_manager.Client.Services
 {
-    internal class ServerConnectionService:IDisposable
+    internal class ServerConnectionService : IDisposable, IServerConnectionService
     {
         //todo сделать что-то с syncId
         private Uri _baseAddress = new Uri("https://localhost:7216");
