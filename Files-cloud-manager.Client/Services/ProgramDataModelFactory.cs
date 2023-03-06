@@ -8,13 +8,15 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Services
 {
-    internal class ProgramDataModelFactory
+    internal class ProgramDataModelFactory : IDisposable
     {
-        IServiceProvider _serviceProvider;
+        private IServiceProvider _serviceProvider;
+        private IServiceScope _serviceScope;
 
         public ProgramDataModelFactory(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
+            _serviceScope = serviceProvider.CreateScope();
         }
 
         public ProgramDataModel CreateProgramDataModel(string login, string password)
@@ -26,10 +28,14 @@ namespace Files_cloud_manager.Client.Services
             {
                 return null;
             }
-
-            var res = new ProgramDataModel(connectionService, _serviceProvider.GetRequiredService<FileHashCheckerService>());
+            var res = new ProgramDataModel(connectionService, _serviceScope.ServiceProvider.GetRequiredService<FileHashCheckerService>());
 
             return res;
+        }
+
+        public void Dispose()
+        {
+            _serviceScope.Dispose();
         }
     }
 }
