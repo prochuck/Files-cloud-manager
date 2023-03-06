@@ -1,4 +1,5 @@
 ﻿using FileCloudAPINameSpace;
+using Files_cloud_manager.Client.Services.Interfaces;
 using Microsoft.VisualStudio.Threading;
 using System;
 using System.Collections.Generic;

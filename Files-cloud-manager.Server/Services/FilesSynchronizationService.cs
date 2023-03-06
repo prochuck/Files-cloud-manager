@@ -16,6 +16,8 @@ namespace Files_cloud_manager.Server.Services
 {
     public class FilesSynchronizationService : IFilesSynchronizationService
     {
+        // todo сделать проверку имени файла лучше
+
         /// <summary>
         /// Словарь путь к файлу - файл
         /// </summary>
