@@ -9,14 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Extentions\" />
-    <Folder Include="ViewModels\" />
     <Folder Include="Views\" />
+    <Folder Include="ViewModels\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.5.22" />
   </ItemGroup>
 
