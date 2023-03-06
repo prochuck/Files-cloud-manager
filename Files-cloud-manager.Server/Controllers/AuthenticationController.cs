@@ -138,8 +138,11 @@ namespace Files_cloud_manager.Server.Controllers
         public IActionResult ChangeRole(string userLogin, int roleId)
         {
             User? user = _unitOfWork.UserRepository.Find(userLogin);
-
-            Role newRole = _unitOfWork.RoleRepository.Get(e => e.Id == roleId).FirstOrDefault();
+            if (user is null)
+            {
+                return BadRequest("Запрошенный пользователь не существует.");
+            }
+            Role? newRole = _unitOfWork.RoleRepository.Get(e => e.Id == roleId).FirstOrDefault();
             if (newRole is null)
             {
                 return BadRequest("Запрошена не существующая роль.");
