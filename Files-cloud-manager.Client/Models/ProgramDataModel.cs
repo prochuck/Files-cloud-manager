@@ -30,8 +30,14 @@ namespace Files_cloud_manager.Client.Models
             _fileHashCheckerService = fileHashCheckerService;
         }
 
+        public async Task<int> StartSyncAsync()
+        {
+            int syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
 
-        public async Task<bool> SynchronizeFiles(SyncDirection syncDirection)
+            return syncId;
+        }
+
+        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection)
         {
             // todo добавить cancelToken.
             int syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
@@ -43,12 +49,16 @@ namespace Files_cloud_manager.Client.Models
 
             IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels = CompareLocalFilesToServerAsync(syncId);
 
+            return await SynchronizeFilesAsync(syncDirection, syncId, fileDifferenceModels);
+        }
+        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection, int syncId, IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels)
+        {
             try
             {
                 List<Task> fileDonwloads = new List<Task>();
                 await foreach (var fileDiff in fileDifferenceModels.ConfigureAwait(false))
                 {
-                    fileDonwloads.Add(SynchronizeFile(syncDirection, fileDiff, syncId));
+                    fileDonwloads.Add(SynchronizeFileAsync(syncDirection, fileDiff, syncId));
                 }
 
                 await Task.WhenAll(fileDonwloads).ConfigureAwait(false);
@@ -62,7 +72,7 @@ namespace Files_cloud_manager.Client.Models
             return true;
         }
 
-        public async Task<bool> SynchronizeFile(SyncDirection direction, FileDifferenceModel file, int syncId)
+        public async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file, int syncId)
         {
             switch (direction)
             {
