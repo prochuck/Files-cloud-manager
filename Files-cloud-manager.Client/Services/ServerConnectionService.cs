@@ -1,25 +1,17 @@
 ﻿using FileCloudAPINameSpace;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.VisualBasic;
 using Microsoft.VisualStudio.Threading;
-using Newtonsoft.Json.Schema;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
-using System.Web;
 using Timer = System.Timers.Timer;
 
 namespace Files_cloud_manager.Client.Services
 {
-    internal class ServerConnectionService
+    internal class ServerConnectionService:IDisposable
     {
         //todo сделать что-то с syncId
         private Uri _baseAddress = new Uri("https://localhost:7216");
@@ -37,18 +29,7 @@ namespace Files_cloud_manager.Client.Services
             _cookieContainer = new CookieContainer();
             _httpClient = new System.Net.Http.HttpClient(new HttpClientHandler() { CookieContainer = _cookieContainer });
             _swaggerClient = new FileCloudAPIClient("https://localhost:7216", _httpClient);
-
             _coockieLock = new AsyncReaderWriterLock();
-
-            /*
-            Task a = _swaggerClient.LoginAsync("admin", "123");
-            a.Wait();
-            foreach (var item in _cookieContainer.GetAllCookies().ToArray())
-            {
-                Thread.Sleep(2000);
-                Console.WriteLine(item.Expired);
-            }
-            var res = _swaggerClient.GetFoldersListAsync().Result;*/
         }
 
         public async Task RefreshCoockie()
@@ -66,7 +47,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> Login(string login, string password)
+        public async Task<bool> LoginAsync(string login, string password)
         {
             _login = login;
             _password = password;
@@ -87,7 +68,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<ICollection<FileInfoDTO>> GetFiles(int syncId)
+        public async Task<ICollection<FileInfoDTO>> GetFilesAsync(int syncId)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -98,6 +79,22 @@ namespace Files_cloud_manager.Client.Services
                 catch
                 {
                     return null;
+                }
+            }
+        }
+
+        public async Task<bool> LogoutAsync()
+        {
+            using (await _coockieLock.WriteLockAsync())
+            {
+                try
+                {
+                    await _swaggerClient.LogoutAsync().ConfigureAwait(false);
+                    return true;
+                }
+                catch
+                {
+                    return false;
                 }
             }
         }
@@ -122,7 +119,7 @@ namespace Files_cloud_manager.Client.Services
             return res;
         }
 
-        public async Task<bool> EndSync(int syncId)
+        public async Task<bool> EndSyncAsync(int syncId)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -137,7 +134,7 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-        public async Task<bool> RollBackSync(int syncId)
+        public async Task<bool> RollBackSyncAsync(int syncId)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -153,7 +150,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<Stream> DonwloadFile(int syncId, string filePath)
+        public async Task<Stream> DonwloadFileAsync(int syncId, string filePath)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -169,7 +166,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> CreateOrUpdateFile(int syncId, string filePath, Stream file)
+        public async Task<bool> CreateOrUpdateFileAsync(int syncId, string filePath, Stream file)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -187,7 +184,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> DeleteFile(int syncId, string filePath)
+        public async Task<bool> DeleteFileAsync(int syncId, string filePath)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -203,14 +200,9 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        private string CreateQuery(string requestUri, Dictionary<string, string> keysValuesForQuery)
+        public void Dispose()
         {
-            var query = HttpUtility.ParseQueryString(string.Empty);
-            foreach (var item in keysValuesForQuery)
-            {
-                query[item.Key] = item.Value;
-            }
-            return $"{requestUri}?{query.ToString()}";
+            LogoutAsync().RunSynchronously();
         }
     }
 }

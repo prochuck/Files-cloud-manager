@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace Files_cloud_manager.Client.Models
 {
     //Алгоритмы хэширования приколы с ними
-    class ProgramDataModel
+    class ProgramDataModel : IDisposable
     {
         //todo сделать синхронизацию алгоритмов хэширования с сервером
         //todo добавить DI 
@@ -30,18 +30,18 @@ namespace Files_cloud_manager.Client.Models
             _fileHashCheckerService = fileHashCheckerService;
         }
 
-        
+
         public async Task<bool> SynchronizeFiles(SyncDirection syncDirection)
         {
             // todo добавить cancelToken.
             int syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
 
-            if (syncId==-1)
+            if (syncId == -1)
             {
-                return false; 
+                return false;
             }
 
-            IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels = await CompareLocalFilesToServerAsync(syncId).ConfigureAwait(false);
+            IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels = CompareLocalFilesToServerAsync(syncId);
 
             try
             {
@@ -55,10 +55,10 @@ namespace Files_cloud_manager.Client.Models
             }
             catch
             {
-               await _connectionService.RollBackSync(syncId);
+                await _connectionService.RollBackSyncAsync(syncId).ConfigureAwait(false);
                 return false;
             }
-            await _connectionService.EndSync(syncId);
+            await _connectionService.EndSyncAsync(syncId).ConfigureAwait(false);
             return true;
         }
 
@@ -73,7 +73,7 @@ namespace Files_cloud_manager.Client.Models
                     }
                     if (file.State != FileState.ClientOnly)
                     {
-                        Stream stream = await _connectionService.DonwloadFile(syncId, file.File.RelativePath).ConfigureAwait(false);
+                        Stream stream = await _connectionService.DonwloadFileAsync(syncId, file.File.RelativePath).ConfigureAwait(false);
 
                         using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath)))
                         {
@@ -85,7 +85,7 @@ namespace Files_cloud_manager.Client.Models
                 case SyncDirection.FromClient:
                     if (file.State == FileState.ServerOnly)
                     {
-                        return await _connectionService.DeleteFile(syncId, file.File.RelativePath).ConfigureAwait(false);
+                        return await _connectionService.DeleteFileAsync(syncId, file.File.RelativePath).ConfigureAwait(false);
                     }
                     else
                     {
@@ -96,7 +96,7 @@ namespace Files_cloud_manager.Client.Models
                             4096,
                             true))
                         {
-                            return await _connectionService.CreateOrUpdateFile(syncId, file.File.RelativePath, fileStream);
+                            return await _connectionService.CreateOrUpdateFileAsync(syncId, file.File.RelativePath, fileStream).ConfigureAwait(false);
                         }
                     }
                     break;
@@ -106,23 +106,32 @@ namespace Files_cloud_manager.Client.Models
             }
         }
 
-        public async Task<IAsyncEnumerable<FileDifferenceModel>> CompareLocalFilesToServerAsync(int syncId)
+        public async IAsyncEnumerable<FileDifferenceModel> CompareLocalFilesToServerAsync(int syncId)
         {
             if (syncId == -1)
             {
-                return null;
+                yield break;
             }
-            ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFiles(syncId).ConfigureAwait(false));
+            ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync(syncId).ConfigureAwait(false));
             if (serverFiles is null)
             {
-                return null;
+                yield break;
             }
-            return _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData);
+
+            await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData).ConfigureAwait(false))
+            {
+                yield return item;
+            }
         }
 
         public string GetFullDataPath(string relativePath)
         {
             return $"{PathToData}/{relativePath}";
+        }
+
+        public void Dispose()
+        {
+            _connectionService.Dispose();
         }
 
         //todo вынести приколы с файлами в отдельный сервис
