@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Files_cloud_manager.Client.Services;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -11,16 +12,16 @@ namespace Files_cloud_manager.Client.Models
     {
 				private ObservableCollection<ProgramDataModel> _programsList;
         public ReadOnlyObservableCollection<ProgramDataModel> ProgramsList;
+        private ServerConnectionService _connectionService;
 
-        public ProgramsListModel()
+        public ProgramsListModel(ServerConnectionService connectionService)
         {
-            _programsList=new ObservableCollection<ProgramDataModel>();
+            _connectionService = connectionService;
+
+            _programsList = new ObservableCollection<ProgramDataModel>(_connectionService);
             ProgramsList = new ReadOnlyObservableCollection<ProgramDataModel>(_programsList);
+       
         }
-
-
-
-        private 
 
     }
 }

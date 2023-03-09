@@ -21,6 +21,31 @@ namespace Files_cloud_manager.Client.Services
 
         public ProgramDataModel CreateProgramDataModel(string login, string password)
         {
+            var connectionService = InitializeServerConnectionService(login, password);
+            if (connectionService is null)
+            {
+                return null;
+            }
+
+            var res = new ProgramDataModel(connectionService, _serviceScope.ServiceProvider.GetRequiredService<FileHashCheckerService>());
+
+            return res;
+        }
+        public ProgramsListModel CreateProgramsListModel(string login, string password)
+        {
+            var connectionService = InitializeServerConnectionService(login, password);
+            if (connectionService is null)
+            {
+                return null;
+            }
+
+            var res = new ProgramsListModel(connectionService);
+
+            return res;
+        }
+
+        private ServerConnectionService InitializeServerConnectionService(string login, string password)
+        {
             var connectionService = _serviceScope.ServiceProvider.GetRequiredService<ServerConnectionService>();
             if (!connectionService.IsLoogedIn)
             {
@@ -31,11 +56,11 @@ namespace Files_cloud_manager.Client.Services
                 }
                 connectionService.IsLoogedIn = true;
             }
-
-           
-            var res = new ProgramDataModel(connectionService, _serviceScope.ServiceProvider.GetRequiredService<FileHashCheckerService>());
-
-            return res;
+            else
+            {
+                connectionService.RefreshCoockie();
+            }
+            return connectionService;
         }
 
         public void Dispose()

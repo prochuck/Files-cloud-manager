@@ -32,7 +32,7 @@ namespace Files_cloud_manager.Client
             var services = new ServiceCollection();
             services.AddTransient<IFileHashCheckerService,FileHashCheckerService>();
             services.AddScoped<IServerConnectionService,ServerConnectionService>();
-            services.AddSingleton<ProgramDataModelFactory>();
+            services.AddTransient<ProgramDataModelFactory>();
 
             var serviceProvider=services.BuildServiceProvider();
 

@@ -15,7 +15,8 @@ namespace Files_cloud_manager.Server.Services
         const int rollBackTimeInMinutes = 30;
 
         private ConcurrentDictionary<int, SyncContext> _syncContexts = new ConcurrentDictionary<int, SyncContext>();
-        private HashSet<int> _usersWhithActiveSyncs = new HashSet<int>();
+
+        private Dictionary<int, List<string>> _usersGroupsWhithActiveSyncsPairs = new Dictionary<int, List<string>>();
 
         // todo сделать что-то с потенциальным переполнением
         private int _lastId = 0;
@@ -50,13 +51,20 @@ namespace Files_cloud_manager.Server.Services
             await _createDeleteLock.WaitAsync();
             try
             {
-                if (_usersWhithActiveSyncs.Contains(userId))
+                if (_usersGroupsWhithActiveSyncsPairs.ContainsKey(userId))
                 {
-                    return -1;
+                    if (_usersGroupsWhithActiveSyncsPairs[userId].Contains(fileGroupName))
+                    {
+                        return -1;
+                    }
+                    _usersGroupsWhithActiveSyncsPairs[userId].Add(fileGroupName);
+                }
+                else
+                {
+                    _usersGroupsWhithActiveSyncsPairs.Add(userId, new List<string>() { fileGroupName });
                 }
                 id = _lastId;
                 _lastId++;
-                _usersWhithActiveSyncs.Add(userId);
             }
             finally
             {
@@ -73,7 +81,11 @@ namespace Files_cloud_manager.Server.Services
                 await _createDeleteLock.WaitAsync();
                 try
                 {
-                    _usersWhithActiveSyncs.Remove(userId);
+                    _usersGroupsWhithActiveSyncsPairs[userId].Remove(fileGroupName);
+                    if (_usersGroupsWhithActiveSyncsPairs[userId].Count==0)
+                    {
+                        _usersGroupsWhithActiveSyncsPairs.Remove(userId);
+                    }
                 }
                 finally
                 {
@@ -203,7 +215,11 @@ namespace Files_cloud_manager.Server.Services
                         syncContext.Timer.Dispose();
                         syncContext.ServiceScope.Dispose();
                         _syncContexts.TryRemove(syncId, out _);
-                        _usersWhithActiveSyncs.Remove(userId);
+                        _usersGroupsWhithActiveSyncsPairs[userId].Remove(syncContext.FileGroupName);
+                        if (_usersGroupsWhithActiveSyncsPairs[userId].Count == 0)
+                        {
+                            _usersGroupsWhithActiveSyncsPairs.Remove(userId);
+                        }
                         return true;
                     }
                 }
@@ -233,7 +249,11 @@ namespace Files_cloud_manager.Server.Services
                         syncContext.Timer.Stop();
                         syncContext.ServiceScope.Dispose();
                         _syncContexts.TryRemove(syncId, out _);
-                        _usersWhithActiveSyncs.Remove(userId);
+                        _usersGroupsWhithActiveSyncsPairs[userId].Remove(syncContext.FileGroupName);
+                        if (_usersGroupsWhithActiveSyncsPairs[userId].Count == 0)
+                        {
+                            _usersGroupsWhithActiveSyncsPairs.Remove(userId);
+                        }
                         return true;
                     }
                 }
