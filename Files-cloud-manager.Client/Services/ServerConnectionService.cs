@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Timer = System.Timers.Timer;
 
@@ -15,7 +16,13 @@ namespace Files_cloud_manager.Client.Services
     internal class ServerConnectionService : IDisposable, IServerConnectionService
     {
         //todo сделать что-то с syncId
-        public bool IsLoogedIn { get; set; } = false;
+        public bool IsLoogedIn { get; private set; } = false;
+        public bool IsSyncStarted { get;private set; } = false;
+        /// <summary>
+        /// Текущий ID синхронизации. -1, в случае если синхронизация не начата.
+        /// </summary>
+        private int _currentSyncId = -1;
+
 
         private Uri _baseAddress = new Uri("https://localhost:7216");
         private CookieContainer _cookieContainer;
@@ -26,6 +33,8 @@ namespace Files_cloud_manager.Client.Services
         private AsyncReaderWriterLock _coockieLock;
 
         private Timer _tokenRefreshTimer;
+
+
 
         public ServerConnectionService()
         {
@@ -71,14 +80,18 @@ namespace Files_cloud_manager.Client.Services
             }
 
         }
-
-        public async Task<ICollection<FileInfoDTO>> GetFilesAsync(int syncId)
+       
+        public async Task<ICollection<FileInfoDTO>> GetFilesAsync()
         {
+            if (!IsSyncStarted)
+            {
+                return null;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
                 try
                 {
-                    return await _swaggerClient.GetFileInfoGroupContentAsync(syncId).ConfigureAwait(false);
+                    return await _swaggerClient.GetFileInfoGroupContentAsync(_currentSyncId).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -104,33 +117,41 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<int> StartSynchronizationAsync(string groupName)
+        public async Task<bool> StartSynchronizationAsync(string groupName)
         {
-            int res = -1;
+            if (_currentSyncId != -1)
+            {
+                return false;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
-
                 try
                 {
-
-                    return await _swaggerClient.StartSynchronizationAsync(groupName).ConfigureAwait(false);
+                    _currentSyncId = await _swaggerClient.StartSynchronizationAsync(groupName).ConfigureAwait(false);
+                    IsSyncStarted = true;
+                    return true;
                 }
                 catch
                 {
-                    return -1;
+                    _currentSyncId = -1;
+                    return false;
                 }
-
             }
-            return res;
         }
 
-        public async Task<bool> EndSyncAsync(int syncId)
+        public async Task<bool> EndSyncAsync()
         {
+            if (_currentSyncId == -1)
+            {
+                return false;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
                 try
                 {
-                    await _swaggerClient.EndSynchronizationAsync(syncId).ConfigureAwait(false);
+                    await _swaggerClient.EndSynchronizationAsync(_currentSyncId).ConfigureAwait(false);
+                    IsSyncStarted=false;
+                    _currentSyncId = -1;
                     return true;
                 }
                 catch
@@ -139,13 +160,19 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-        public async Task<bool> RollBackSyncAsync(int syncId)
+        public async Task<bool> RollBackSyncAsync()
         {
+            if (_currentSyncId == -1)
+            {
+                return false;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
                 try
                 {
-                    await _swaggerClient.RollBackSynchronizationAsync(syncId).ConfigureAwait(false);
+                    await _swaggerClient.RollBackSynchronizationAsync(_currentSyncId).ConfigureAwait(false);
+                    IsSyncStarted = false;
+                    _currentSyncId = -1;
                     return true;
                 }
                 catch
@@ -155,13 +182,18 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<Stream> DonwloadFileAsync(int syncId, string filePath)
+        public async Task<Stream> DonwloadFileAsync(string filePath,CancellationToken cancellationToken)
         {
+            if (!IsSyncStarted)
+            {
+                return null;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
                 try
                 {
-                    var fileResult = await _swaggerClient.GetFileAsync(syncId, filePath).ConfigureAwait(false);
+                    var fileResult = await _swaggerClient.GetFileAsync(_currentSyncId, filePath, cancellationToken).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
                     return fileResult.Stream;
                 }
                 catch
@@ -171,13 +203,17 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> CreateOrUpdateFileAsync(int syncId, string filePath, Stream file)
+        public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream file,CancellationToken cancellationToken)
         {
+            if (!IsSyncStarted)
+            {
+                return false;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
                 try
                 {
-                    await _swaggerClient.CreateOrUpdateFileAsync(syncId, filePath, new FileParameter(file));
+                    await _swaggerClient.CreateOrUpdateFileAsync(_currentSyncId, filePath, new FileParameter(file), cancellationToken);
 
 
                     return true;
@@ -189,13 +225,17 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> DeleteFileAsync(int syncId, string filePath)
+        public async Task<bool> DeleteFileAsync(string filePath)
         {
+            if (!IsSyncStarted)
+            {
+                return false;
+            }
             using (await _coockieLock.ReadLockAsync())
             {
                 try
                 {
-                    await _swaggerClient.DeleteFileAsync(syncId, filePath).ConfigureAwait(false);
+                    await _swaggerClient.DeleteFileAsync(_currentSyncId, filePath).ConfigureAwait(false);
                     return true;
                 }
                 catch

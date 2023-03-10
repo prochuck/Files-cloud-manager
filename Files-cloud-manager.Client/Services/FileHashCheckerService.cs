@@ -7,45 +7,66 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Services
 {
     internal class FileHashCheckerService : IFileHashCheckerService
     {
-        public async IAsyncEnumerable<FileDifferenceModel> GetHashDifferencesAsync(IEnumerable<FileInfoDTO> fileInfos, string pathToFiles)
+        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
+        public async IAsyncEnumerable<FileDifferenceModel> GetHashDifferencesAsync(
+            IEnumerable<FileInfoDTO> fileInfos,
+            string pathToFiles,
+            CancellationToken cancellationToken)
         {
-            Dictionary<string, FileInfoDTO> pathToFileInfos = fileInfos.ToDictionary(e => e.RelativePath, e => e);
-
-            IEnumerable<string> filesInDirectory = EnumerateAllFiles(pathToFiles);
-
-            foreach (var item in filesInDirectory)
+            await _semaphoreSlim.WaitAsync();
+            try
             {
-                if (!pathToFileInfos.ContainsKey(item))
+                Dictionary<string, FileInfoDTO> pathToFileInfos = fileInfos.ToDictionary(e => e.RelativePath, e => e);
+
+                IEnumerable<string> filesInDirectory = EnumerateAllFiles(pathToFiles);
+
+                foreach (var item in filesInDirectory)
                 {
-                    yield return new FileDifferenceModel()
+                    if (!pathToFileInfos.ContainsKey(item))
                     {
-                        File = new FileInfoDTO()
+                        yield return new FileDifferenceModel()
                         {
-                            RelativePath = item
-                        },
-                        State = FileState.ClientOnly
-                    };
-                    continue;
-                }
+                            File = new FileInfoDTO()
+                            {
+                                RelativePath = item
+                            },
+                            State = FileState.ClientOnly
+                        };
+                        continue;
+                    }
 
-                byte[] bytes = await GetFileHashAsync(GetFullDataPath(pathToFiles, item)).ConfigureAwait(false);
+                    byte[] bytes = await GetFileHashAsync(GetFullDataPath(pathToFiles, item), cancellationToken).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                if (!bytes.SequenceEqual(pathToFileInfos[item].Hash))
-                {
-                    yield return new FileDifferenceModel() { File = pathToFileInfos[item], State = FileState.Modified };
+                    if (!bytes.SequenceEqual(pathToFileInfos[item].Hash))
+                    {
+                        yield return new FileDifferenceModel() { File = pathToFileInfos[item], State = FileState.Modified };
+                    }
                     pathToFileInfos.Remove(item);
-                    continue;
+                }
+                foreach (var item in pathToFileInfos)
+                {
+                    yield return new FileDifferenceModel() { File = item.Value, State = FileState.ServerOnly };
                 }
             }
-            foreach (var item in pathToFileInfos)
+            finally
             {
-                yield return new FileDifferenceModel() { File = item.Value, State = FileState.ServerOnly };
+                _semaphoreSlim.Release();
+            }
+        }
+        private async Task<byte[]> GetFileHashAsync(string path, CancellationToken cancellationToken)
+        {
+            HashAlgorithm hashAlgorithm = SHA256.Create();
+            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+            {
+                return await hashAlgorithm.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
             }
         }
         private IEnumerable<string> EnumerateAllFiles(string path)
@@ -82,14 +103,6 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
 
-        }
-        private async Task<byte[]> GetFileHashAsync(string path)
-        {
-            HashAlgorithm hashAlgorithm = SHA256.Create();
-            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
-            {
-                return await hashAlgorithm.ComputeHashAsync(stream).ConfigureAwait(false);
-            }
         }
         private string GetFullDataPath(string basePath, string relativePath)
         {
