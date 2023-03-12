@@ -95,6 +95,7 @@ namespace Files_cloud_manager.Client.Models
                 _fileDifferencesCollectionLock.Release();
             }
             await _connectionService.EndSyncAsync().ConfigureAwait(false);
+            _fileDifferences.Clear();
             _isFileDiffCollectionSync = false;
             return true;
         }
