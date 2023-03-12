@@ -1,11 +1,13 @@
 ﻿using Files_cloud_manager.Client.Models;
 using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
+using Files_cloud_manager.Client.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,26 +28,31 @@ namespace Files_cloud_manager.Client
     {
         public MainWindow()
         {
-            ServerConnectionService programDataModel = new ServerConnectionService();
 
             // todo перенести.
             var services = new ServiceCollection();
-            services.AddTransient<IFileHashCheckerService,FileHashCheckerService>();
-            services.AddScoped<IServerConnectionService,ServerConnectionService>();
-            services.AddTransient<ProgramDataModelFactory>();
+            services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
+            services.AddTransient<IServerConnectionService, ServerConnectionService>();
+            services.AddTransient<ModelFactory>();
 
-            var serviceProvider=services.BuildServiceProvider();
+            var serviceProvider = services.BuildServiceProvider();
 
-            var scope=serviceProvider.CreateScope();
+            var scope = serviceProvider.CreateScope();
 
-            var a=scope.ServiceProvider.GetRequiredService<ProgramDataModelFactory>();
+            var a = scope.ServiceProvider.GetRequiredService<ModelFactory>();
 
-            a.CreateProgramDataModel("123", "123");
+            var b = scope.ServiceProvider.GetService<IServerConnectionService>();
+            b.LoginAsync("admin", "123").Wait();
 
-            Console.WriteLine();
+            this.DataContext = new ProgramDataViewModel(a.CreateProgramDataModel(b, "", "D:\\VAGNOE\\Programki\\Files-cloud-manager storage\\tests\\123", "test5"));
 
-           // programDataModel.Login();
-        
+
+            //   CancellationTokenSource source = new CancellationTokenSource();
+
+            // Console.WriteLine();
+
+            // programDataModel.Login();
+
             //Console.WriteLine();
             InitializeComponent();
         }

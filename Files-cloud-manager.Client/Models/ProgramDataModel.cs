@@ -12,6 +12,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Data;
 
 namespace Files_cloud_manager.Client.Models
 {
@@ -22,17 +23,19 @@ namespace Files_cloud_manager.Client.Models
         // todo Сделать откат изменений на клиенте.
         public string PathToExe { get; set; }
         public string PathToData { get; set; }
-        public string GroupName { get; set; }
+        public string GroupName { get; }
+        public ReadOnlyObservableCollection<FileDifferenceModel> FileDifferences { get; private set; }
 
         private bool _isFileDiffCollectionSync = false;
 
         private ObservableCollection<FileDifferenceModel> _fileDifferences;
-        public ReadOnlyObservableCollection<FileDifferenceModel> FileDifferences { get; private set; }
+       
         private SemaphoreSlim _fileDifferencesCollectionLock = new SemaphoreSlim(1);
-
 
         private IServerConnectionService _connectionService;
         private IFileHashCheckerService _fileHashCheckerService;
+
+        private object _locker = new object();
 
         public ProgramDataModel(
             IServerConnectionService connectionService,
@@ -41,18 +44,23 @@ namespace Files_cloud_manager.Client.Models
             string pathToData,
             string groupName)
         {
+
             _connectionService = connectionService;
             _fileHashCheckerService = fileHashCheckerService;
 
             _fileDifferences = new ObservableCollection<FileDifferenceModel>();
             FileDifferences = new ReadOnlyObservableCollection<FileDifferenceModel>(_fileDifferences);
+
             PathToExe = pathToExe;
             PathToData = pathToData;
             GroupName = groupName;
+
+          
+
         }
 
 
-        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection,CancellationToken cancellationToken)
+        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection, CancellationToken cancellationToken)
         {
             // todo добавить cancelToken.
             if (!await EnsureSyncStartedAsync().ConfigureAwait(false))
@@ -87,7 +95,7 @@ namespace Files_cloud_manager.Client.Models
                 _fileDifferencesCollectionLock.Release();
             }
             await _connectionService.EndSyncAsync().ConfigureAwait(false);
-            _isFileDiffCollectionSync=false;
+            _isFileDiffCollectionSync = false;
             return true;
         }
 
@@ -122,11 +130,16 @@ namespace Files_cloud_manager.Client.Models
                     await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData, cancellationToken).ConfigureAwait(false))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        _fileDifferences.Add(item);
+                        _fileDifferences.Add(item); 
                     }
                 }
                 _isFileDiffCollectionSync = true;
                 return FileDifferences;
+            }
+            catch
+            {
+                Console.WriteLine();
+                return null;
             }
             finally
             {
@@ -135,7 +148,7 @@ namespace Files_cloud_manager.Client.Models
         }
 
 
-        private async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file,CancellationToken cancellationToken)
+        private async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file, CancellationToken cancellationToken)
         {
             switch (direction)
             {
@@ -148,7 +161,7 @@ namespace Files_cloud_manager.Client.Models
                     {
                         Stream stream = await _connectionService.DonwloadFileAsync(file.File.RelativePath, cancellationToken).ConfigureAwait(false);
 
-                        using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath),4096,FileOptions.Asynchronous))
+                        using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath), 4096, FileOptions.Asynchronous))
                         {
                             await stream.CopyToAsync(newFile, cancellationToken).ConfigureAwait(false);
                         }

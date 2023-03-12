@@ -1,22 +1,98 @@
-﻿using System;
+﻿using Files_cloud_manager.Client.Commands;
+using Files_cloud_manager.Client.Models;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Data;
+using System.Windows.Input;
 
 namespace Files_cloud_manager.Client.ViewModels
 {
-    internal class ProgramDataViewModel : INotifyPropertyChanged
+    internal class ProgramDataViewModel : INotifyPropertyChanged, IDisposable
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private int myVar;
+        private ProgramDataModel _model;
 
-        public int MyProperty
+
+        public CancellationTokenSource CancellationTokenSource { get; } = new CancellationTokenSource();
+
+        public string PathToExe
         {
-            get { return myVar; }
-            set { myVar = value; }
+            get { return _model.PathToExe; }
+            set
+            {
+                _model.PathToExe = value;
+                OnPropertyChanged(nameof(PathToExe));
+            }
+        }
+
+        public string PathToData
+        {
+            get { return _model.PathToData; }
+            set
+            {
+                _model.PathToData = value;
+                OnPropertyChanged(nameof(PathToData));
+            }
+        }
+
+        public string GroupName
+        {
+            get { return _model.GroupName; }
+        }
+
+        private bool _isSyncFromClient;
+        public bool IsSyncFromClient
+        {
+            get { return _isSyncFromClient; }
+            set
+            {
+                _isSyncFromClient = value;
+                OnPropertyChanged(nameof(IsSyncFromClient));
+            }
+        }
+
+        public ICommand SyncFilesAsyncCommand { get;private set; }
+
+        public ICommand CompareFilesCommand { get; private set; }
+
+        public ReadOnlyObservableCollection<FileDifferenceModel> Files
+        {
+            get { return _model.FileDifferences; }
+        }
+
+        public ProgramDataViewModel(ProgramDataModel model)
+        {
+            _model = model;
+            BindingOperations.EnableCollectionSynchronization(model.FileDifferences, new object());
+            SyncFilesAsyncCommand = new AsyncCommandBase(async e =>
+            {
+                if (IsSyncFromClient)
+                {
+                   await SyncFilesAsync(SyncDirection.FromClient).ConfigureAwait(false);
+                }
+                else
+                {
+                   await SyncFilesAsync(SyncDirection.FromServer).ConfigureAwait(false);
+                }
+            }, null,null);
+            CompareFilesCommand = new AsyncCommandBase(async e => await CompareLocalFilesToServerAsync().ConfigureAwait(false), null, null);
+        }
+
+        public async Task SyncFilesAsync(SyncDirection syncDirection)
+        {
+            await _model.SynchronizeFilesAsync(syncDirection, CancellationTokenSource.Token).ConfigureAwait(false);
+        }
+
+        public async Task CompareLocalFilesToServerAsync()
+        {
+            await _model.CompareLocalFilesToServerAsync(CancellationTokenSource.Token).ConfigureAwait(false);
         }
 
 
@@ -27,6 +103,13 @@ namespace Files_cloud_manager.Client.ViewModels
             {
                 PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
+        }
+
+        public void Dispose()
+        {
+            CancellationTokenSource.Cancel();
+            CancellationTokenSource.Dispose();
+            _model.Dispose();
         }
     }
 }
