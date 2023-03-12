@@ -11,7 +11,7 @@ namespace Files_cloud_manager.Client.Commands
     {
         private Func<object, Task> _execute;
         private Func<object, bool>? _canExecute;
-        private Action<string?>? _callBack;
+        private Action<string?>? _errorMessageCallBack;
         private bool _isExecuting = false;
         public bool IsExecuting
         {
@@ -30,7 +30,7 @@ namespace Files_cloud_manager.Client.Commands
         {
             _execute = command;
             _canExecute = canExecute;
-            _callBack = callBack;
+            _errorMessageCallBack = callBack;
         }
 
         public event EventHandler? CanExecuteChanged;
@@ -46,13 +46,13 @@ namespace Files_cloud_manager.Client.Commands
             try
             {
                 await ExecuteAsync(parameter);
-                if (_callBack is not null)
-                    _callBack(null);
+                if (_errorMessageCallBack is not null)
+                    _errorMessageCallBack(null);
             }
             catch (Exception e)
             {
-                if (_callBack is not null)
-                    _callBack(e.Message);
+                if (_errorMessageCallBack is not null)
+                    _errorMessageCallBack(e.Message);
             }
             finally
             {

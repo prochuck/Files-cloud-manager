@@ -58,6 +58,21 @@ namespace Files_cloud_manager.Client.ViewModels
             }
         }
 
+
+
+        string _errorText;
+        public string ErrorText
+        {
+            get { return _errorText; }
+            set
+            {
+                _errorText = value;
+                OnPropertyChanged(nameof(ErrorText));
+            }
+        }
+
+
+
         public ICommand SyncFilesAsyncCommand { get;private set; }
 
         public ICommand CompareFilesCommand { get; private set; }
@@ -81,8 +96,8 @@ namespace Files_cloud_manager.Client.ViewModels
                 {
                    await SyncFilesAsync(SyncDirection.FromServer).ConfigureAwait(false);
                 }
-            }, null,null);
-            CompareFilesCommand = new AsyncCommandBase(async e => await CompareLocalFilesToServerAsync().ConfigureAwait(false), null, null);
+            }, null,e=> ErrorText=e);
+            CompareFilesCommand = new AsyncCommandBase(async e => await CompareLocalFilesToServerAsync().ConfigureAwait(false), null, e => ErrorText = e);
         }
 
         public async Task SyncFilesAsync(SyncDirection syncDirection)

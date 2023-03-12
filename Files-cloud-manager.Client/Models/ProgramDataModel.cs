@@ -88,7 +88,7 @@ namespace Files_cloud_manager.Client.Models
             catch
             {
                 await _connectionService.RollBackSyncAsync().ConfigureAwait(false);
-                return false;
+                throw;
             }
             finally
             {
@@ -136,11 +136,6 @@ namespace Files_cloud_manager.Client.Models
                 }
                 _isFileDiffCollectionSync = true;
                 return FileDifferences;
-            }
-            catch
-            {
-                Console.WriteLine();
-                return null;
             }
             finally
             {
