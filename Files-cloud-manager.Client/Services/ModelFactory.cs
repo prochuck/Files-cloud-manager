@@ -19,13 +19,6 @@ namespace Files_cloud_manager.Client.Services
             _serviceProvider = serviceProvider;
             _serviceScope = serviceProvider.CreateScope();
         }
-
-        public SessionModel CreateSessionModel(string login,string password)
-        {
-            var session = new SessionModel(login, password, this);
-            return session;
-        }
-
         public ProgramDataModel CreateProgramDataModel(IServerConnectionService connectionService,string PathToExe, string PathToData, string GroupName)
         {
             var res = new ProgramDataModel(
@@ -36,30 +29,14 @@ namespace Files_cloud_manager.Client.Services
                 GroupName);
             return res;
         }
-        public ProgramsListModel CreateProgramsListModel(SessionModel session)
+        public ProgramsListModel CreateProgramsListModel(string login, string password)
         {
-            var res = new ProgramsListModel(this, session);
-
+            var res = new ProgramsListModel(
+                login,
+                password,
+                _serviceScope.ServiceProvider.GetService<ModelFactory>(),
+                _serviceScope.ServiceProvider.GetService<IServerConnectionService>());
             return res;
-        }
-
-
-        public IServerConnectionService InitializeServerConnectionService(string login, string password)
-        {
-            var connectionService = _serviceScope.ServiceProvider.GetRequiredService<IServerConnectionService>();
-            if (!connectionService.IsLoogedIn)
-            {
-                bool isLoginSuc = connectionService.LoginAsync(login, password).Result;
-                if (!isLoginSuc)
-                {
-                    return null;
-                }
-            }
-            else
-            {
-                connectionService.RefreshCoockie();
-            }
-            return connectionService;
         }
 
         public void Dispose()

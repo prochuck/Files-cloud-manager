@@ -1,8 +1,10 @@
 ﻿using FileCloudAPINameSpace;
 using Files_cloud_manager.Client.Services;
+using Files_cloud_manager.Client.Services.Interfaces;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
@@ -16,67 +18,124 @@ namespace Files_cloud_manager.Client.Models
     //Алгоритмы хэширования приколы с ними
     class ProgramDataModel : IDisposable, IValidatableObject
     {
-        //todo сделать синхронизацию алгоритмов хэширования с сервером
-        //todo добавить DI 
-        [Required]
+        // todo сделать синхронизацию алгоритмов хэширования с сервером
+        // todo Сделать откат изменений на клиенте.
         public string PathToExe { get; set; }
-        [Required]
         public string PathToData { get; set; }
-        [Required]
         public string GroupName { get; set; }
 
-        private ServerConnectionService _connectionService;
-        private FileHashCheckerService _fileHashCheckerService;
+        private bool _isFileDiffCollectionSync = false;
 
-        public ProgramDataModel(ServerConnectionService connectionService, FileHashCheckerService fileHashCheckerService)
+        private ObservableCollection<FileDifferenceModel> _fileDifferences;
+        public ReadOnlyObservableCollection<FileDifferenceModel> FileDifferences { get; private set; }
+        private SemaphoreSlim _fileDifferencesCollectionLock = new SemaphoreSlim(1);
+
+
+        private IServerConnectionService _connectionService;
+        private IFileHashCheckerService _fileHashCheckerService;
+
+        public ProgramDataModel(
+            IServerConnectionService connectionService,
+            IFileHashCheckerService fileHashCheckerService,
+            string pathToExe,
+            string pathToData,
+            string groupName)
         {
             _connectionService = connectionService;
             _fileHashCheckerService = fileHashCheckerService;
+
+            _fileDifferences = new ObservableCollection<FileDifferenceModel>();
+            FileDifferences = new ReadOnlyObservableCollection<FileDifferenceModel>(_fileDifferences);
+            PathToExe = pathToExe;
+            PathToData = pathToData;
+            GroupName = groupName;
         }
 
-        public async Task<int> StartSyncAsync()
-        {
-            int syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
 
-            return syncId;
-        }
-
-        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection)
+        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection,CancellationToken cancellationToken)
         {
             // todo добавить cancelToken.
-            int syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
-
-            if (syncId == -1)
+            if (!await EnsureSyncStartedAsync().ConfigureAwait(false))
             {
                 return false;
             }
 
-            IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels = CompareLocalFilesToServerAsync(syncId);
+            if (!_isFileDiffCollectionSync)
+            {
+                await CompareLocalFilesToServerAsync(cancellationToken);
+            }
 
-            return await SynchronizeFilesAsync(syncDirection, syncId, fileDifferenceModels);
-        }
-        public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection, int syncId, IAsyncEnumerable<FileDifferenceModel> fileDifferenceModels)
-        {
+            await _fileDifferencesCollectionLock.WaitAsync();
+
             try
             {
                 List<Task> fileDonwloads = new List<Task>();
-                await foreach (var fileDiff in fileDifferenceModels.ConfigureAwait(false))
+                foreach (var fileDiff in _fileDifferences)
                 {
-                    fileDonwloads.Add(SynchronizeFileAsync(syncDirection, fileDiff, syncId));
+                    fileDonwloads.Add(SynchronizeFileAsync(syncDirection, fileDiff, cancellationToken));
                 }
 
                 await Task.WhenAll(fileDonwloads).ConfigureAwait(false);
             }
             catch
             {
-                await _connectionService.RollBackSyncAsync(syncId).ConfigureAwait(false);
+                await _connectionService.RollBackSyncAsync().ConfigureAwait(false);
                 return false;
             }
-            await _connectionService.EndSyncAsync(syncId).ConfigureAwait(false);
+            finally
+            {
+                _fileDifferencesCollectionLock.Release();
+            }
+            await _connectionService.EndSyncAsync().ConfigureAwait(false);
+            _isFileDiffCollectionSync=false;
             return true;
         }
 
-        public async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file, int syncId)
+        private async Task<bool> EnsureSyncStartedAsync()
+        {
+            if (!_connectionService.IsSyncStarted)
+            {
+                await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
+                if (!_connectionService.IsSyncStarted)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public async Task<ReadOnlyObservableCollection<FileDifferenceModel>> CompareLocalFilesToServerAsync(CancellationToken cancellationToken)
+        {
+            if (!await EnsureSyncStartedAsync().ConfigureAwait(false))
+            {
+                return FileDifferences;
+            }
+
+            await _fileDifferencesCollectionLock.WaitAsync();
+            try
+            {
+                _fileDifferences.Clear();
+                _isFileDiffCollectionSync = false;
+                ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync().ConfigureAwait(false));
+                if (serverFiles is not null)
+                {
+                    await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData, cancellationToken).ConfigureAwait(false))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        _fileDifferences.Add(item);
+                    }
+                }
+                _isFileDiffCollectionSync = true;
+                return FileDifferences;
+            }
+            finally
+            {
+                _fileDifferencesCollectionLock.Release();
+            }
+        }
+
+
+        private async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file,CancellationToken cancellationToken)
         {
             switch (direction)
             {
@@ -87,11 +146,11 @@ namespace Files_cloud_manager.Client.Models
                     }
                     if (file.State != FileState.ClientOnly)
                     {
-                        Stream stream = await _connectionService.DonwloadFileAsync(syncId, file.File.RelativePath).ConfigureAwait(false);
+                        Stream stream = await _connectionService.DonwloadFileAsync(file.File.RelativePath, cancellationToken).ConfigureAwait(false);
 
-                        using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath)))
+                        using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath),4096,FileOptions.Asynchronous))
                         {
-                            await stream.CopyToAsync(newFile).ConfigureAwait(false);
+                            await stream.CopyToAsync(newFile, cancellationToken).ConfigureAwait(false);
                         }
                     }
                     return true;
@@ -99,7 +158,7 @@ namespace Files_cloud_manager.Client.Models
                 case SyncDirection.FromClient:
                     if (file.State == FileState.ServerOnly)
                     {
-                        return await _connectionService.DeleteFileAsync(syncId, file.File.RelativePath).ConfigureAwait(false);
+                        return await _connectionService.DeleteFileAsync(file.File.RelativePath).ConfigureAwait(false);
                     }
                     else
                     {
@@ -110,7 +169,7 @@ namespace Files_cloud_manager.Client.Models
                             4096,
                             true))
                         {
-                            return await _connectionService.CreateOrUpdateFileAsync(syncId, file.File.RelativePath, fileStream).ConfigureAwait(false);
+                            return await _connectionService.CreateOrUpdateFileAsync(file.File.RelativePath, fileStream, cancellationToken).ConfigureAwait(false);
                         }
                     }
                     break;
@@ -120,42 +179,30 @@ namespace Files_cloud_manager.Client.Models
             }
         }
 
-        public async IAsyncEnumerable<FileDifferenceModel> CompareLocalFilesToServerAsync(int syncId)
-        {
-            if (syncId == -1)
-            {
-                yield break;
-            }
-            ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync(syncId).ConfigureAwait(false));
-            if (serverFiles is null)
-            {
-                yield break;
-            }
 
-            await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData).ConfigureAwait(false))
-            {
-                yield return item;
-            }
-        }
 
-        public string GetFullDataPath(string relativePath)
+        private string GetFullDataPath(string relativePath)
         {
             return $"{PathToData}/{relativePath}";
         }
 
         public void Dispose()
         {
+            _connectionService.RollBackSyncAsync().RunSynchronously();
             _connectionService.Dispose();
         }
         // todo доделать
+        /// <summary>
+        /// Не доделано.
+        /// </summary>
+        /// <param name="validationContext"></param>
+        /// <returns></returns>
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (CheckIfFileNameIsValid(PathToExe)||!File.Exists(PathToExe))
+            if (CheckIfFileNameIsValid(PathToExe) || !File.Exists(PathToExe))
                 yield return new ValidationResult("Путь к exe не верен");
-            if (CheckIfFileNameIsValid(PathToData)||!Directory.Exists(PathToData))
+            if (CheckIfFileNameIsValid(PathToData) || !Directory.Exists(PathToData))
                 yield return new ValidationResult("Путь к данным не верен");
-
-
         }
         // todo сделать проверку имени файла лучше
         private bool CheckIfFileNameIsValid(string name)
