@@ -73,31 +73,42 @@ namespace Files_cloud_manager.Client.ViewModels
 
 
 
-        public ICommand SyncFilesAsyncCommand { get;private set; }
+        public ICommand SyncFilesAsyncCommand { get; private set; }
 
         public ICommand CompareFilesCommand { get; private set; }
 
         public ReadOnlyObservableCollection<FileDifferenceModel> Files
         {
-            get { return _model.FileDifferences; }
+            get {
+                return _model.FileDifferences;
+            }
         }
 
         public ProgramDataViewModel(ProgramDataModel model)
         {
             _model = model;
-            BindingOperations.EnableCollectionSynchronization(model.FileDifferences, new object());
+
             SyncFilesAsyncCommand = new AsyncCommandBase(async e =>
             {
                 if (IsSyncFromClient)
                 {
-                   await SyncFilesAsync(SyncDirection.FromClient).ConfigureAwait(false);
+                    await SyncFilesAsync(SyncDirection.FromClient).ConfigureAwait(false);
                 }
                 else
                 {
-                   await SyncFilesAsync(SyncDirection.FromServer).ConfigureAwait(false);
+                    await SyncFilesAsync(SyncDirection.FromServer).ConfigureAwait(false);
                 }
-            }, null,e=> ErrorText=e);
-            CompareFilesCommand = new AsyncCommandBase(async e => await CompareLocalFilesToServerAsync().ConfigureAwait(false), null, e => ErrorText = e);
+            }, null, e => ErrorText = e);
+            CompareFilesCommand = new AsyncCommandBase(async e =>
+            {
+                await CompareLocalFilesToServerAsync().ConfigureAwait(false);
+                OnPropertyChanged(nameof(SyncFilesAsyncCommand));
+            }, null, e => ErrorText = e);
+        }
+
+        public void CancelOperations()
+        {
+            CancellationTokenSource.Cancel();
         }
 
         public async Task SyncFilesAsync(SyncDirection syncDirection)
@@ -124,7 +135,6 @@ namespace Files_cloud_manager.Client.ViewModels
         {
             CancellationTokenSource.Cancel();
             CancellationTokenSource.Dispose();
-            _model.Dispose();
         }
     }
 }

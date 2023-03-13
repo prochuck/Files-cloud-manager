@@ -1,6 +1,7 @@
 ﻿using FileCloudAPINameSpace;
 using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
+using Microsoft.VisualStudio.Threading;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,13 +30,11 @@ namespace Files_cloud_manager.Client.Models
         private bool _isFileDiffCollectionSync = false;
 
         private ObservableCollection<FileDifferenceModel> _fileDifferences;
-       
+
         private SemaphoreSlim _fileDifferencesCollectionLock = new SemaphoreSlim(1);
 
         private IServerConnectionService _connectionService;
         private IFileHashCheckerService _fileHashCheckerService;
-
-        private object _locker = new object();
 
         public ProgramDataModel(
             IServerConnectionService connectionService,
@@ -55,7 +54,21 @@ namespace Files_cloud_manager.Client.Models
             PathToData = pathToData;
             GroupName = groupName;
 
-          
+            
+
+            BindingOperations.EnableCollectionSynchronization(FileDifferences, new object());
+            //    new CollectionSynchronizationCallback((col, context, action, isWrite) =>
+            //{
+            //    _fileDifferencesCollectionLock.Wait();
+            //    try
+            //    {
+            //        action();
+            //    }
+            //    finally
+            //    {
+            //        _fileDifferencesCollectionLock.Release();
+            //    }
+            //}));
 
         }
 
@@ -88,6 +101,9 @@ namespace Files_cloud_manager.Client.Models
             catch
             {
                 await _connectionService.RollBackSyncAsync().ConfigureAwait(false);
+                _isFileDiffCollectionSync = false;
+                if (_fileDifferences.Count != 0)
+                    _fileDifferences.Clear();
                 throw;
             }
             finally
@@ -120,10 +136,12 @@ namespace Files_cloud_manager.Client.Models
                 return FileDifferences;
             }
 
-            await _fileDifferencesCollectionLock.WaitAsync();
+            await _fileDifferencesCollectionLock.WaitAsync().ConfigureAwait(false);
+
             try
             {
-                _fileDifferences.Clear();
+                if (_fileDifferences.Count!=0)
+                    _fileDifferences.Clear();
                 _isFileDiffCollectionSync = false;
                 ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync().ConfigureAwait(false));
                 if (serverFiles is not null)
@@ -131,11 +149,18 @@ namespace Files_cloud_manager.Client.Models
                     await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData, cancellationToken).ConfigureAwait(false))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        _fileDifferences.Add(item); 
+                        _fileDifferences.Add(item);
                     }
                 }
                 _isFileDiffCollectionSync = true;
                 return FileDifferences;
+            }
+            catch
+            {
+                _isFileDiffCollectionSync = false;
+                if (_fileDifferences.Count != 0)
+                    _fileDifferences.Clear();
+                throw;
             }
             finally
             {
@@ -146,6 +171,7 @@ namespace Files_cloud_manager.Client.Models
 
         private async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file, CancellationToken cancellationToken)
         {
+            // Ошибка появляется в случае, если после синхронизации файлов, файлы в папке изменяются.
             switch (direction)
             {
                 case SyncDirection.FromServer:

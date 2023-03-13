@@ -5,42 +5,42 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Files_cloud_manager.Client" 
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors" xmlns:viewmodels="clr-namespace:Files_cloud_manager.Client.ViewModels"
-        d:DataContext="{d:DesignInstance Type=viewmodels:ProgramDataViewModel}"
+        d:DataContext="{d:DesignInstance Type=viewmodels:ProgramListViewModel}"
         mc:Ignorable="d"
        
         Title="MainWindow" Height="450" Width="800">
-    <Grid  Margin="10,10,10,10">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*"/>
-            <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="1*"/>
-        </Grid.ColumnDefinitions>
-        <Grid Grid.Column="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="1*"/>
-                <RowDefinition Height="1*"/>
-                <RowDefinition Height="1*"/>
-                <RowDefinition Height="1*"/>
-                <RowDefinition Height="1*"/>
-                <RowDefinition Height="1*"/>
-                <RowDefinition Height="1*"/>
-            </Grid.RowDefinitions>
-            <Button Grid.Row="0" x:Name="button" Command="{Binding SyncFilesAsyncCommand}" Content="sync" Height="40" VerticalAlignment="Center"  />
-            <Button  Grid.Row="1" x:Name="button1" Command="{Binding CompareFilesCommand}" Content="comp" Height="40"  VerticalAlignment="Center" />
-            <CheckBox x:Name="checkBox" Content="CheckBox" IsChecked="{Binding IsSyncFromClient}" HorizontalAlignment="Center" Grid.Row="2" VerticalAlignment="Center"/>
-        </Grid>
-        <ListBox Grid.Column="1" x:Name="listBox" ItemsSource="{Binding Path= Files}" Margin="10,0,10,0">
-            <i:Interaction.Triggers>
-                <i:EventTrigger EventName="MouseDoubleClick">
-                    <i:InvokeCommandAction Command="{Binding}"/>
-                </i:EventTrigger>
-            </i:Interaction.Triggers>
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding Path=File.RelativePath}"/>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-        <ListBox x:Name="textBloc" Grid.Column="2" ItemsSource="{Binding}"></ListBox>
-    </Grid>
+	<Grid  Margin="10,10,10,10">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="1*"/>
+			<ColumnDefinition Width="2*"/>
+			<ColumnDefinition Width="1*"/>
+		</Grid.ColumnDefinitions>
+		<Grid Grid.Column="0">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+			</Grid.RowDefinitions>
+			<Button Grid.Row="0" x:Name="button" Command="{Binding  SelectedProgram.SyncFilesAsyncCommand}" Content="sync" Height="40" VerticalAlignment="Center"  />
+			<Button  Grid.Row="1" x:Name="button1" Command="{Binding SelectedProgram.CompareFilesCommand}" Content="comp" Height="40"  VerticalAlignment="Center" />
+			<CheckBox x:Name="checkBox" Content="CheckBox" IsChecked="{Binding SelectedProgram.IsSyncFromClient}" HorizontalAlignment="Center" Grid.Row="2" VerticalAlignment="Center"/>
+		</Grid>
+		<ListBox Grid.Column="1" x:Name="listBox" ItemsSource="{Binding Path= SelectedProgram.Files}" Margin="10,0,10,0">
+			<i:Interaction.Triggers>
+				<i:EventTrigger EventName="MouseDoubleClick">
+					<i:InvokeCommandAction Command="{Binding}"/>
+				</i:EventTrigger>
+			</i:Interaction.Triggers>
+			<ListBox.ItemTemplate>
+				<DataTemplate>
+					<TextBlock Text="{Binding Path=File.RelativePath}"/>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
+		<ListBox x:Name="textBloc" Grid.Column="2" SelectedItem="{Binding SelectedProgram}" ItemsSource="{Binding ProgramsList}"></ListBox>
+	</Grid>
 </Window>

@@ -40,11 +40,14 @@ namespace Files_cloud_manager.Client
             var scope = serviceProvider.CreateScope();
 
             var a = scope.ServiceProvider.GetRequiredService<ModelFactory>();
+            var b = a.CreateProgramsListModel("admin", "123");
 
-            var b = scope.ServiceProvider.GetService<IServerConnectionService>();
-            b.LoginAsync("admin", "123").Wait();
+            b.CreateNewProgramData("", "C:\\programsM\\file\\test", "test5");
 
-            this.DataContext = new ProgramDataViewModel(a.CreateProgramDataModel(b, "", "D:\\VAGNOE\\Programki\\Files-cloud-manager storage\\tests\\123", "test5"));
+            //  var b = scope.ServiceProvider.GetService<IServerConnectionService>();
+            //b.LoginAsync("admin", "123").Wait();
+
+            this.DataContext = new ProgramListViewModel(b);
 
 
             //   CancellationTokenSource source = new CancellationTokenSource();
