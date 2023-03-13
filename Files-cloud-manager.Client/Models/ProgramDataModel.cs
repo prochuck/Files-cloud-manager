@@ -85,9 +85,8 @@ namespace Files_cloud_manager.Client.Models
             {
                 await CompareLocalFilesToServerAsync(cancellationToken);
             }
-
+          
             await _fileDifferencesCollectionLock.WaitAsync();
-
             try
             {
                 List<Task> fileDonwloads = new List<Task>();
@@ -110,6 +109,10 @@ namespace Files_cloud_manager.Client.Models
             {
                 _fileDifferencesCollectionLock.Release();
             }
+
+          
+
+
             await _connectionService.EndSyncAsync().ConfigureAwait(false);
             _fileDifferences.Clear();
             _isFileDiffCollectionSync = false;
@@ -137,7 +140,6 @@ namespace Files_cloud_manager.Client.Models
             }
 
             await _fileDifferencesCollectionLock.WaitAsync().ConfigureAwait(false);
-
             try
             {
                 if (_fileDifferences.Count!=0)

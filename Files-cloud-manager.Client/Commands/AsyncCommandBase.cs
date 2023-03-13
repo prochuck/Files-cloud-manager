@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
@@ -13,6 +14,9 @@ namespace Files_cloud_manager.Client.Commands
         private Func<object, bool>? _canExecute;
         private Action<string?>? _errorMessageCallBack;
         private bool _isExecuting = false;
+
+        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
+
         public bool IsExecuting
         {
             get
@@ -42,6 +46,7 @@ namespace Files_cloud_manager.Client.Commands
 
         public async void Execute(object? parameter)
         {
+            await _semaphoreSlim.WaitAsync();
             IsExecuting = true;
             try
             {
@@ -57,6 +62,7 @@ namespace Files_cloud_manager.Client.Commands
             finally
             {
                 IsExecuting = false;
+                _semaphoreSlim.Release();
             }
         }
 
