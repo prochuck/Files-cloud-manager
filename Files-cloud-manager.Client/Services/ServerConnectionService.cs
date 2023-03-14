@@ -18,7 +18,7 @@ namespace Files_cloud_manager.Client.Services
         //todo сделать что-то с syncId
         // todo вынести syncId из serverconnection в programdatamodel
         public bool IsLoogedIn { get; private set; } = false;
-        public bool IsSyncStarted { get;private set; } = false;
+        public bool IsSyncStarted { get; private set; } = false;
         /// <summary>
         /// Текущий ID синхронизации. -1, в случае если синхронизация не начата.
         /// </summary>
@@ -81,7 +81,7 @@ namespace Files_cloud_manager.Client.Services
             }
 
         }
-       
+
         public async Task<ICollection<FileInfoDTO>> GetFilesAsync()
         {
             if (!IsSyncStarted)
@@ -151,7 +151,7 @@ namespace Files_cloud_manager.Client.Services
                 try
                 {
                     await _swaggerClient.EndSynchronizationAsync(_currentSyncId).ConfigureAwait(false);
-                    IsSyncStarted=false;
+                    IsSyncStarted = false;
                     _currentSyncId = -1;
                     return true;
                 }
@@ -199,7 +199,7 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-        public async Task<Stream> DonwloadFileAsync(string filePath,CancellationToken cancellationToken)
+        public async Task<Stream> DonwloadFileAsync(string filePath, CancellationToken cancellationToken)
         {
             if (!IsSyncStarted)
             {
@@ -220,7 +220,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream file,CancellationToken cancellationToken)
+        public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream file, CancellationToken cancellationToken)
         {
             if (!IsSyncStarted)
             {
@@ -272,6 +272,21 @@ namespace Files_cloud_manager.Client.Services
                 catch
                 {
                     return null;
+                }
+            }
+        }
+        public async Task<bool> CreateFileGroupAsync(string groupName)
+        {
+            using (await _coockieLock.ReadLockAsync())
+            {
+                try
+                {
+                    await _swaggerClient.CreateFileInfoGroupAsync(groupName).ConfigureAwait(false);
+                    return true;
+                }
+                catch
+                {
+                    return false;
                 }
             }
         }

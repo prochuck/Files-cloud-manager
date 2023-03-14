@@ -30,7 +30,7 @@
             <CheckBox x:Name="checkBox" Content="IsFromClient" IsChecked="{Binding SelectedProgram.IsSyncFromClient}" HorizontalAlignment="Center" Grid.Row="2" VerticalAlignment="Center"/>
             <TextBox x:Name="textBox" HorizontalAlignment="Center" Grid.Row="3" TextWrapping="Wrap" Text="{Binding SelectedProgram.ErrorText}" VerticalAlignment="Center" Width="120"/>
             <Button Grid.Row="4" x:Name="button1_Copy"  Command="{Binding SelectedProgram.RollBackCommand}" Content="rollback" Height="40"  VerticalAlignment="Center" />
-            <Button Grid.Row="5" x:Name="button2_Copy"  Command="{Binding SelectedProgram.RollBackCommand}" Content="create" Height="40"  VerticalAlignment="Center" />
+            <Button Grid.Row="5" x:Name="button2_Copy"  Command="{Binding CreateProgramDataCommand}" Content="create" Height="40"  VerticalAlignment="Center" />
         </Grid>
         <ListBox Grid.Column="1" x:Name="listBox" ItemsSource="{Binding Path= SelectedProgram.Files}" Margin="10,0,10,0">
             <i:Interaction.Triggers>
