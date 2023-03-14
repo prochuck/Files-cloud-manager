@@ -41,7 +41,7 @@ namespace Files_cloud_manager.Client.Views
             }
             else
             {
-                MessageBox.Show("Заполните все поля");
+                MessageBox.Show(this,"Заполните все поля");
             }
         }
     }

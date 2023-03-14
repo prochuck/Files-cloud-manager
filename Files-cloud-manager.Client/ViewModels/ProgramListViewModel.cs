@@ -1,5 +1,6 @@
 ﻿using Files_cloud_manager.Client.Commands;
 using Files_cloud_manager.Client.Models;
+using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Views;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,8 @@ namespace Files_cloud_manager.Client.ViewModels
         public ObservableCollection<ProgramDataViewModel> ProgramsList { get; private set; }
 
         private ProgramDataViewModel _selectedProgram;
+
+        private IDialogService _dialogService;
 
         public ProgramDataViewModel SelectedProgram
         {
@@ -39,8 +42,9 @@ namespace Files_cloud_manager.Client.ViewModels
 
 
 
-        public ProgramListViewModel(ProgramsListModel model)
+        public ProgramListViewModel(ProgramsListModel model,IDialogService dialogService)
         {
+            _dialogService=dialogService;
             _model = model;
             ProgramsList = new ObservableCollection<ProgramDataViewModel>();
 
@@ -52,29 +56,28 @@ namespace Files_cloud_manager.Client.ViewModels
             }
         }
 
-
-
         public void CreateProgramData()
         {
             _model.UpdateFileGroups();
-            GroupCreationView groupCreationView = new GroupCreationView(_model.FileGroups.ToList());
-            if (groupCreationView.ShowDialog() is bool res && res)
+
+            GroupCreationViewModel groupCreationViewModel = _dialogService.ShowGroupCreationDialog(_model.FileGroups.ToList());
+            if (groupCreationViewModel is null)
             {
-                GroupCreationViewModel groupCreationViewModel = groupCreationView.DataContext as GroupCreationViewModel;
-                try
-                {
-                    _model.CreateNewProgramData(groupCreationViewModel.PathToExe, groupCreationViewModel.PathToData, groupCreationViewModel.GroupName);
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show(e.Message);
-                }
+                return;
+            }
+            try
+            {
+                _model.CreateNewProgramData(groupCreationViewModel.PathToExe, groupCreationViewModel.PathToData, groupCreationViewModel.GroupName);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
             }
         }
 
+
         public void Dispose()
         {
-
         }
     }
 }
