@@ -91,7 +91,7 @@ namespace Files_cloud_manager.Client.ViewModels
         {
             _model = model;
 
-            SyncFilesAsyncCommand = new AsyncCommandBase(async e =>
+            SyncFilesAsyncCommand = new AsyncCommand(async e =>
             {
                 if (IsSyncFromClient)
                 {
@@ -102,13 +102,13 @@ namespace Files_cloud_manager.Client.ViewModels
                     await SyncFilesAsync(SyncDirection.FromServer).ConfigureAwait(false);
                 }
             }, null, e => ErrorText = e);
-            CompareFilesCommand = new AsyncCommandBase(async e =>
+            CompareFilesCommand = new AsyncCommand(async e =>
             {
                 await CompareLocalFilesToServerAsync().ConfigureAwait(false);
                 OnPropertyChanged(nameof(SyncFilesAsyncCommand));
             }, null, e => ErrorText = e);
 
-            RollBackCommand = new AsyncCommandBase(async e => await _model.TryRollBackSyncByNameAsync(), null, null);
+            RollBackCommand = new AsyncCommand(async e => await _model.TryRollBackSyncByNameAsync(), null, null);
 
         }
 

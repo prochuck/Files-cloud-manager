@@ -8,10 +8,10 @@ using System.Windows.Input;
 
 namespace Files_cloud_manager.Client.Commands
 {
-    internal class AsyncCommandBase : ICommand
+    internal class AsyncCommand : ICommand
     {
-        private Func<object, Task> _execute;
-        private Func<object, bool>? _canExecute;
+        private Func<object?, Task> _execute;
+        private Func<object?, bool>? _canExecute;
         private Action<string?>? _errorMessageCallBack;
         private bool _isExecuting = false;
 
@@ -30,7 +30,7 @@ namespace Files_cloud_manager.Client.Commands
             }
         }
 
-        public AsyncCommandBase(Func<object, Task> command, Func<object, bool>? canExecute, Action<string?>? callBack)
+        public AsyncCommand(Func<object?, Task> command, Func<object?, bool>? canExecute, Action<string?>? callBack)
         {
             _execute = command;
             _canExecute = canExecute;

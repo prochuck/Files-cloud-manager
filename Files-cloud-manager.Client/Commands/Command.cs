@@ -9,10 +9,10 @@ namespace Files_cloud_manager.Client.Commands
 {
     internal class Command : ICommand
     {
-        private Func<object, object> _execute;
-        private Func<object, bool> _canExecute;
+        private Action<object?> _execute;
+        private Func<object?, bool> _canExecute;
 
-        public Command(Func<object, object> execute, Func<object, bool> canExecute)
+        public Command(Action<object?> execute, Func<object?, bool> canExecute)
         {
             _execute = execute;
             _canExecute = canExecute;
