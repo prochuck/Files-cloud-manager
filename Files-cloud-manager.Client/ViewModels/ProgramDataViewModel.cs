@@ -13,7 +13,7 @@ using System.Windows.Input;
 
 namespace Files_cloud_manager.Client.ViewModels
 {
-    internal class ProgramDataViewModel : INotifyPropertyChanged, IDisposable
+    internal class ProgramDataViewModel : ViewModelBase, IDisposable
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 

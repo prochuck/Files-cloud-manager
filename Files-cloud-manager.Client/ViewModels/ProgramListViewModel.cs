@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.ViewModels
 {
-    internal class ProgramListViewModel : IDisposable, INotifyPropertyChanged
+    internal class ProgramListViewModel : ViewModelBase, IDisposable
     {
         public ObservableCollection<ProgramDataViewModel> ProgramsList { get; private set; }
 
@@ -44,16 +44,7 @@ namespace Files_cloud_manager.Client.ViewModels
                 ProgramsList.Add(new ProgramDataViewModel(item));
             }
         }
-
-
-        private void OnPropertyChanged(string propertyName)
-        {
-            if (propertyName is not null)
-            {
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            }
-        }
-
+       
         public void Dispose()
         {
 
