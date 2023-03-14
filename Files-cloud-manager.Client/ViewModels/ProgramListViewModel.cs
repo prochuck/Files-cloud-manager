@@ -67,7 +67,14 @@ namespace Files_cloud_manager.Client.ViewModels
             }
             try
             {
-                _model.CreateNewProgramData(groupCreationViewModel.PathToExe, groupCreationViewModel.PathToData, groupCreationViewModel.GroupName);
+                ProgramsList.Add(new ProgramDataViewModel(
+                    _model.CreateNewProgramData(
+                        groupCreationViewModel.PathToExe,
+                        groupCreationViewModel.PathToData,
+                        groupCreationViewModel.GroupName
+                        )
+                    ));
+
             }
             catch (Exception e)
             {

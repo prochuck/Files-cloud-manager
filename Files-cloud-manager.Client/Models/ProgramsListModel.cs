@@ -48,7 +48,7 @@ namespace Files_cloud_manager.Client.Models
 
         }
         // todo сделать проверку путей
-        public void CreateNewProgramData(string PathToExe, string PathToData, string GroupName)
+        public ProgramDataModel CreateNewProgramData(string PathToExe, string PathToData, string GroupName)
         {
             UpdateFileGroups();
             if (!Path.IsPathRooted(PathToData))
@@ -66,7 +66,9 @@ namespace Files_cloud_manager.Client.Models
                     throw new Exception($"Ошибка при создании группы с именем {GroupName}, повторите попытку позже");
                 }
             }
-            _programsList.Add(_ModelFactory.CreateProgramDataModel(_connectionService, PathToExe, PathToData, GroupName));
+            var model = _ModelFactory.CreateProgramDataModel(_connectionService, PathToExe, PathToData, GroupName);
+            _programsList.Add(model);
+            return model;
         }
 
         public void UpdateFileGroups()

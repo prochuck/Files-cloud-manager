@@ -126,17 +126,6 @@ namespace Files_cloud_manager.Client.ViewModels
         {
             await _model.CompareLocalFilesToServerAsync(CancellationTokenSource.Token).ConfigureAwait(false);
         }
-
-
-
-        private void OnPropertyChanged(string propertyName)
-        {
-            if (propertyName is not null)
-            {
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            }
-        }
-
         public void Dispose()
         {
             CancellationTokenSource.Cancel();

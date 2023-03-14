@@ -54,7 +54,7 @@ namespace Files_cloud_manager.Client.Models
             PathToData = pathToData;
             GroupName = groupName;
 
-            
+
 
             BindingOperations.EnableCollectionSynchronization(FileDifferences, new object());
             //    new CollectionSynchronizationCallback((col, context, action, isWrite) =>
@@ -85,7 +85,7 @@ namespace Files_cloud_manager.Client.Models
             {
                 await CompareLocalFilesToServerAsync(cancellationToken);
             }
-          
+
             await _fileDifferencesCollectionLock.WaitAsync();
             try
             {
@@ -94,8 +94,10 @@ namespace Files_cloud_manager.Client.Models
                 {
                     fileDonwloads.Add(SynchronizeFileAsync(syncDirection, fileDiff, cancellationToken));
                 }
-
                 await Task.WhenAll(fileDonwloads).ConfigureAwait(false);
+                await _connectionService.EndSyncAsync().ConfigureAwait(false);
+                _fileDifferences.Clear();
+                _isFileDiffCollectionSync = false;
             }
             catch
             {
@@ -109,13 +111,6 @@ namespace Files_cloud_manager.Client.Models
             {
                 _fileDifferencesCollectionLock.Release();
             }
-
-          
-
-
-            await _connectionService.EndSyncAsync().ConfigureAwait(false);
-            _fileDifferences.Clear();
-            _isFileDiffCollectionSync = false;
             return true;
         }
 
@@ -127,7 +122,7 @@ namespace Files_cloud_manager.Client.Models
                 if (!_connectionService.IsSyncStarted)
                 {
                     IEnumerable<FileInfoGroupDTO> fileInfoGroups = await _connectionService.GetFileInfoGroupsAsync().ConfigureAwait(false);
-                    if (fileInfoGroups.Any(e=>e.Name==GroupName))
+                    if (fileInfoGroups.Any(e => e.Name == GroupName))
                     {
                         throw new Exception($"Синхронизация для группы {GroupName} уже начата");
                     }
@@ -155,7 +150,7 @@ namespace Files_cloud_manager.Client.Models
             await _fileDifferencesCollectionLock.WaitAsync().ConfigureAwait(false);
             try
             {
-                if (_fileDifferences.Count!=0)
+                if (_fileDifferences.Count != 0)
                     _fileDifferences.Clear();
                 _isFileDiffCollectionSync = false;
                 ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync().ConfigureAwait(false));
@@ -197,6 +192,8 @@ namespace Files_cloud_manager.Client.Models
                     if (file.State != FileState.ClientOnly)
                     {
                         Stream stream = await _connectionService.DonwloadFileAsync(file.File.RelativePath, cancellationToken).ConfigureAwait(false);
+
+                        Directory.GetParent(GetFullDataPath(file.File.RelativePath))!.Create();
 
                         using (FileStream newFile = File.Create(GetFullDataPath(file.File.RelativePath), 4096, FileOptions.Asynchronous))
                         {
