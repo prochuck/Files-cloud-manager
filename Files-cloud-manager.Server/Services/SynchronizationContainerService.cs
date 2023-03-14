@@ -13,14 +13,21 @@ namespace Files_cloud_manager.Server.Services
     public class SynchronizationContainerService : ISynchronizationContainerService
     {
         const int rollBackTimeInMinutes = 30;
-
+        /// <summary>
+        /// sync id to sync context
+        /// </summary>
         private ConcurrentDictionary<int, SyncContext> _syncContexts = new ConcurrentDictionary<int, SyncContext>();
+        /// <summary>
+        /// user id to list of group infos
+        /// </summary>
+        private Dictionary<int, List<GroupInfo>> _usersGroupsWhithActiveSyncsPairs = new Dictionary<int, List<GroupInfo>>();
 
-        private Dictionary<int, List<string>> _usersGroupsWhithActiveSyncsPairs = new Dictionary<int, List<string>>();
 
         // todo сделать что-то с потенциальным переполнением
         private int _lastId = 0;
         private SemaphoreSlim _createDeleteLock = new SemaphoreSlim(1);
+
+
 
         IServiceProvider _serviceProvider;
 
@@ -32,6 +39,11 @@ namespace Files_cloud_manager.Server.Services
             public string FileGroupName;
             public Timer Timer;
             public AsyncReaderWriterLock objectLocker;
+        }
+        struct GroupInfo
+        {
+            public string GroupName;
+            public int SyncId;
         }
 
         public SynchronizationContainerService(IServiceProvider serviceProvider)
@@ -51,20 +63,21 @@ namespace Files_cloud_manager.Server.Services
             await _createDeleteLock.WaitAsync();
             try
             {
+                id = _lastId;
+                _lastId++;
                 if (_usersGroupsWhithActiveSyncsPairs.ContainsKey(userId))
                 {
-                    if (_usersGroupsWhithActiveSyncsPairs[userId].Contains(fileGroupName))
+                    if (_usersGroupsWhithActiveSyncsPairs[userId].Any(e => e.GroupName == fileGroupName))
                     {
+                        _lastId--;
                         return -1;
                     }
-                    _usersGroupsWhithActiveSyncsPairs[userId].Add(fileGroupName);
+                    _usersGroupsWhithActiveSyncsPairs[userId].Add(new GroupInfo() { GroupName = fileGroupName, SyncId = id });
                 }
                 else
                 {
-                    _usersGroupsWhithActiveSyncsPairs.Add(userId, new List<string>() { fileGroupName });
+                    _usersGroupsWhithActiveSyncsPairs.Add(userId, new List<GroupInfo>() { new GroupInfo() { GroupName = fileGroupName, SyncId = id } });
                 }
-                id = _lastId;
-                _lastId++;
             }
             finally
             {
@@ -81,8 +94,9 @@ namespace Files_cloud_manager.Server.Services
                 await _createDeleteLock.WaitAsync();
                 try
                 {
-                    _usersGroupsWhithActiveSyncsPairs[userId].Remove(fileGroupName);
-                    if (_usersGroupsWhithActiveSyncsPairs[userId].Count==0)
+                    _usersGroupsWhithActiveSyncsPairs[userId].RemoveAll(e => e.GroupName == fileGroupName);
+
+                    if (_usersGroupsWhithActiveSyncsPairs[userId].Count == 0)
                     {
                         _usersGroupsWhithActiveSyncsPairs.Remove(userId);
                     }
@@ -215,7 +229,7 @@ namespace Files_cloud_manager.Server.Services
                         syncContext.Timer.Dispose();
                         syncContext.ServiceScope.Dispose();
                         _syncContexts.TryRemove(syncId, out _);
-                        _usersGroupsWhithActiveSyncsPairs[userId].Remove(syncContext.FileGroupName);
+                        _usersGroupsWhithActiveSyncsPairs[userId].RemoveAll(e => e.GroupName == syncContext.FileGroupName);
                         if (_usersGroupsWhithActiveSyncsPairs[userId].Count == 0)
                         {
                             _usersGroupsWhithActiveSyncsPairs.Remove(userId);
@@ -249,7 +263,7 @@ namespace Files_cloud_manager.Server.Services
                         syncContext.Timer.Stop();
                         syncContext.ServiceScope.Dispose();
                         _syncContexts.TryRemove(syncId, out _);
-                        _usersGroupsWhithActiveSyncsPairs[userId].Remove(syncContext.FileGroupName);
+                        _usersGroupsWhithActiveSyncsPairs[userId].RemoveAll(e => e.GroupName == syncContext.FileGroupName);
                         if (_usersGroupsWhithActiveSyncsPairs[userId].Count == 0)
                         {
                             _usersGroupsWhithActiveSyncsPairs.Remove(userId);
@@ -258,6 +272,53 @@ namespace Files_cloud_manager.Server.Services
                     }
                 }
 
+            }
+            finally
+            {
+                _createDeleteLock.Release();
+            }
+            return false;
+        }
+        public async Task<bool> RollBackSynchronizationAsync(int userId, string fileGroupName)
+        {
+            SyncContext syncContext;
+            await _createDeleteLock.WaitAsync();
+            try
+            {
+                int syncId;
+                if (_usersGroupsWhithActiveSyncsPairs.ContainsKey(userId))
+                {
+                    GroupInfo group = _usersGroupsWhithActiveSyncsPairs[userId].Where(e => e.GroupName == fileGroupName).FirstOrDefault();
+                    if (group.Equals(default(GroupInfo)))
+                    {
+                        return false;
+                    }
+                    syncId = group.SyncId;
+                }
+                else
+                {
+                    return false;
+                }
+                if (!_syncContexts.TryGetValue(syncId, out syncContext) || syncContext.UserId != userId)
+                {
+                    return false;
+                }
+
+                using (await syncContext.objectLocker.WriteLockAsync())
+                {
+                    if (syncContext.FileSyncService.RollBackSynchronization())
+                    {
+                        syncContext.Timer.Stop();
+                        syncContext.ServiceScope.Dispose();
+                        _syncContexts.TryRemove(syncId, out _);
+                        _usersGroupsWhithActiveSyncsPairs[userId].RemoveAll(e => e.GroupName == syncContext.FileGroupName);
+                        if (_usersGroupsWhithActiveSyncsPairs[userId].Count == 0)
+                        {
+                            _usersGroupsWhithActiveSyncsPairs.Remove(userId);
+                        }
+                        return true;
+                    }
+                }
             }
             finally
             {

@@ -16,6 +16,7 @@ namespace Files_cloud_manager.Client.Services
     internal class ServerConnectionService : IDisposable, IServerConnectionService
     {
         //todo сделать что-то с syncId
+        // todo вынести syncId из serverconnection в programdatamodel
         public bool IsLoogedIn { get; private set; } = false;
         public bool IsSyncStarted { get;private set; } = false;
         /// <summary>
@@ -181,7 +182,23 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-
+        public async Task<bool> RollBackSyncAsync(string groupName)
+        {
+            using (await _coockieLock.ReadLockAsync())
+            {
+                try
+                {
+                    await _swaggerClient.RollBackSynchronizationByNameAsync(groupName).ConfigureAwait(false);
+                    IsSyncStarted = false;
+                    _currentSyncId = -1;
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
         public async Task<Stream> DonwloadFileAsync(string filePath,CancellationToken cancellationToken)
         {
             if (!IsSyncStarted)
@@ -244,7 +261,20 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-
+        public async Task<ICollection<FileInfoGroupDTO>> GetFileInfoGroupsAsync()
+        {
+            using (await _coockieLock.ReadLockAsync())
+            {
+                try
+                {
+                    return await _swaggerClient.GetFoldersListAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
         public void Dispose()
         {
             LogoutAsync().RunSynchronously();

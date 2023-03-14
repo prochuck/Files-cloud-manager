@@ -77,9 +77,12 @@ namespace Files_cloud_manager.Client.ViewModels
 
         public ICommand CompareFilesCommand { get; private set; }
 
+        public ICommand RollBackCommand { get; private set; }
+
         public ReadOnlyObservableCollection<FileDifferenceModel> Files
         {
-            get {
+            get
+            {
                 return _model.FileDifferences;
             }
         }
@@ -104,6 +107,9 @@ namespace Files_cloud_manager.Client.ViewModels
                 await CompareLocalFilesToServerAsync().ConfigureAwait(false);
                 OnPropertyChanged(nameof(SyncFilesAsyncCommand));
             }, null, e => ErrorText = e);
+
+            RollBackCommand = new AsyncCommandBase(async e => await _model.TryRollBackSyncByNameAsync(), null, null);
+
         }
 
         public void CancelOperations()

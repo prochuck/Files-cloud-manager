@@ -10,6 +10,7 @@ namespace Files_cloud_manager.Server.Services.Interfaces
         Task<Stream> GetFileAsync(int userId, int syncId, string filePath);
         Task<List<FileInfoDTO>> GetFilesInfosAsync(int userId, int syncId);
         Task<bool> RollBackSynchronizationAsync(int userId, int syncId);
+        Task<bool> RollBackSynchronizationAsync(int userId, string fileGroupName);
         Task<int> StartNewSynchronizationAsync(int userId, string fileGroupName);
     }
 }

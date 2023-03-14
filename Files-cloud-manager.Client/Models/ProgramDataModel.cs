@@ -126,10 +126,23 @@ namespace Files_cloud_manager.Client.Models
                 await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
                 if (!_connectionService.IsSyncStarted)
                 {
-                    return false;
+                    IEnumerable<FileInfoGroupDTO> fileInfoGroups = await _connectionService.GetFileInfoGroupsAsync().ConfigureAwait(false);
+                    if (fileInfoGroups.Any(e=>e.Name==GroupName))
+                    {
+                        throw new Exception($"Синхронизация для группы {GroupName} уже начата");
+                    }
+                    else
+                    {
+                        throw new Exception($"Группы с именем {GroupName} не существует");
+                    }
                 }
             }
             return true;
+        }
+
+        public async Task<bool> TryRollBackSyncByNameAsync()
+        {
+            return await _connectionService.RollBackSyncAsync(GroupName).ConfigureAwait(false);
         }
 
         public async Task<ReadOnlyObservableCollection<FileDifferenceModel>> CompareLocalFilesToServerAsync(CancellationToken cancellationToken)

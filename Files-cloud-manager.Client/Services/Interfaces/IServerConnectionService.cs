@@ -70,5 +70,11 @@ namespace Files_cloud_manager.Client.Services.Interfaces
         /// <param name="groupName"></param>
         /// <returns>Начата ли синхронизация</returns>
         Task<bool> StartSynchronizationAsync(string groupName);
+        /// <summary>
+        /// Получить список групп файлов для текущего пользователя.
+        /// </summary>
+        /// <returns>Список файловых групп</returns>
+        Task<ICollection<FileInfoGroupDTO>> GetFileInfoGroupsAsync();
+        Task<bool> RollBackSyncAsync(string groupName);
     }
 }

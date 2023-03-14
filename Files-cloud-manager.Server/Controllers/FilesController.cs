@@ -74,7 +74,17 @@ namespace Files_cloud_manager.Server.Controllers
             }
             return BadRequest();
         }
-
+        [HttpPost(Name = "rollBackSynchronizationByName")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> RollBackSynchronizationByNameAsync(string fileGroupName)
+        {
+            if (await _syncContainer.RollBackSynchronizationAsync(GetUserId(), fileGroupName))
+            {
+                return Ok();
+            }
+            return BadRequest();
+        }
         [HttpGet(Name = "getFoldersList")]
         [ProducesResponseType(typeof(IList<FileInfoGroupDTO>), 200)]
         [ProducesResponseType(400)]
