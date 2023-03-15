@@ -148,19 +148,12 @@ namespace Files_cloud_manager.Server.Controllers
         [ProducesResponseType(400)]
         public async Task<IActionResult> CreateOrUpdateFileAsync(int SyncId, string FilePath, [FromForm] FileUploadModel fileUploadModel)
         {
-            try
+            using (Stream readStream = fileUploadModel.UploadedFile.OpenReadStream())
             {
-                using (Stream readStream = fileUploadModel.UploadedFile.OpenReadStream())
+                if (await _syncContainer.CreateOrUpdateFileAsync(GetUserId(), SyncId, FilePath, readStream))
                 {
-                    if (await _syncContainer.CreateOrUpdateFileAsync(GetUserId(), SyncId, FilePath, readStream))
-                    {
-                        return Ok();
-                    }
+                    return Ok();
                 }
-            }
-            catch
-            {
-                Console.WriteLine();
             }
             return BadRequest();
         }
