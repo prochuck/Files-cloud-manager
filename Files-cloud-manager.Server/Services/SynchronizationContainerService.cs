@@ -140,7 +140,7 @@ namespace Files_cloud_manager.Server.Services
         {
 
             (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
-            if (syncContext.Equals(default(SyncContext)))
+            if (releaser.Equals(default(AsyncReaderWriterLock.Releaser)))
             {
                 return null;
             }
@@ -155,7 +155,7 @@ namespace Files_cloud_manager.Server.Services
         public async Task<bool> CreateOrUpdateFileAsync(int userId, int syncId, string filePath, Stream uploadedFile)
         {
             (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
-            if (syncContext.Equals(default(SyncContext)))
+            if (releaser.Equals(default(AsyncReaderWriterLock.Releaser)))
             {
                 return false;
             }
@@ -173,7 +173,7 @@ namespace Files_cloud_manager.Server.Services
         public async Task<bool> DeleteFileAsync(int userId, int syncId, string filePath)
         {
             (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
-            if (syncContext.Equals(default(SyncContext)))
+            if (releaser.Equals(default(AsyncReaderWriterLock.Releaser)))
             {
                 return false;
             }
@@ -192,7 +192,7 @@ namespace Files_cloud_manager.Server.Services
         public async Task<Stream> GetFileAsync(int userId, int syncId, string filePath)
         {
             (AsyncReaderWriterLock.Releaser releaser, SyncContext syncContext) = await EnterSyncLock(syncId, userId, LockTypes.ReadLock);
-            if (syncContext.Equals(default(SyncContext)))
+            if (releaser.Equals(default(AsyncReaderWriterLock.Releaser)))
             {
                 return null;
             }

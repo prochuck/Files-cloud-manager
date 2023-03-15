@@ -10,42 +10,76 @@ namespace Files_cloud_manager.Server.Domain
 
         public DbSet<T> DBset { get; set; }
 
+        private ReaderWriterLockSlim ReaderWriterLockSlim = new ReaderWriterLockSlim();
+
         public BaseRepository(AppDBContext dbContext)
         {
             DBContext = dbContext;
             DBset = DBContext.Set<T>();
         }
+
         public virtual IEnumerable<T> Get(Expression<Func<T, bool>> filter = null, string[] includeProperties = null)
         {
-            IQueryable<T> query = DBset;
+            ReaderWriterLockSlim.EnterReadLock();
+            try
+            {
+                IQueryable<T> query = DBset;
 
-            if (filter is not null)
-            {
-                query = query.Where(filter);
-            }
-            if (includeProperties is not null)
-            {
-                foreach (var item in includeProperties)
+                if (filter is not null)
                 {
-                    query = query.Include(item);
+                    query = query.Where(filter);
                 }
-            }
-           
+                if (includeProperties is not null)
+                {
+                    foreach (var item in includeProperties)
+                    {
+                        query = query.Include(item);
+                    }
+                }
 
-            return query.ToList();
+                return query.ToList();
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitReadLock();
+            }
         }
 
         public void Create(T item)
         {
-            DBset.Add(item);
+            ReaderWriterLockSlim.EnterWriteLock();
+            try
+            {
+                DBset.Add(item);
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
         }
         public void Delete(T item)
         {
-            DBset.Remove(item);
+            ReaderWriterLockSlim.EnterWriteLock();
+            try
+            {
+                DBset.Remove(item);
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
         }
         public void Update(T item)
         {
-            DBset.Update(item);
+            ReaderWriterLockSlim.EnterWriteLock();
+            try
+            {
+                DBset.Update(item);
+            }
+            finally
+            {
+                ReaderWriterLockSlim.ExitWriteLock();
+            }
         }
     }
 }

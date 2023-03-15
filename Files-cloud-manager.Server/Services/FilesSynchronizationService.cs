@@ -21,9 +21,9 @@ namespace Files_cloud_manager.Server.Services
         /// <summary>
         /// Словарь путь к файлу - файл
         /// </summary>
-        private Dictionary<string, FileInfo> _filesInfos;
+        private ConcurrentDictionary<string, FileInfo> _filesInfos;
         private FileInfoGroup? _fileInfoGroup;
-        private List<string> _changedFiles = new List<string>();
+        private ConcurrentBag<string> _changedFiles = new ConcurrentBag<string>();
 
         private bool _isSyncStarted;
 
@@ -34,9 +34,8 @@ namespace Files_cloud_manager.Server.Services
         private IMapper _mapper;
         private IUnitOfWork _unitOfWork;
 
-        private object _syncLock = new object();
-        private HashSet<string> _activeFileAcesses = new HashSet<string>();
-        private ConcurrentDictionary<string, CancellationTokenSource> _fileUploadsCancelationTokens = new ConcurrentDictionary<string, CancellationTokenSource>();
+        private ConcurrentDictionary<string, SemaphoreSlim> _semaphoresForFiles = new ConcurrentDictionary<string, SemaphoreSlim>();
+        CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
         public FilesSynchronizationService(IUnitOfWork unitOfWork,
             IOptions<FilesSyncServiceConfig> config,
@@ -54,9 +53,9 @@ namespace Files_cloud_manager.Server.Services
 
         public bool StartSynchronization(int userId, string fileInfoGroupName)
         {
-            lock (_syncLock)
+            lock (_semaphoresForFiles)
             {
-                if (_isSyncStarted == true)
+                if (_isSyncStarted)
                 {
                     return false;
                 }
@@ -71,7 +70,7 @@ namespace Files_cloud_manager.Server.Services
                 }
 
                 _isSyncStarted = true;
-                _filesInfos = _fileInfoGroup.Files.ToDictionary(e => e.RelativePath);
+                _filesInfos = new ConcurrentDictionary<string, FileInfo>(_fileInfoGroup.Files.ToDictionary(e => e.RelativePath));
                 return true;
             }
         }
@@ -84,65 +83,68 @@ namespace Files_cloud_manager.Server.Services
         /// <returns></returns>
         public async Task<bool> CreateOrUpdateFileAsync(string filePath, Stream originalFileStream)
         {
-            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-            lock (_activeFileAcesses)
+            SemaphoreSlim semaphoreSlim = GetSemaphoreForFilePath(filePath);
+            await semaphoreSlim.WaitAsync();
+            try
             {
-                if (_activeFileAcesses.Contains(filePath))
+                if (!_isSyncStarted || !CheckIfFileNameIsValid(filePath))
                 {
                     return false;
                 }
-                _activeFileAcesses.Add(filePath);
-            }
 
-            if (!_isSyncStarted || !CheckIfFileNameIsValid(filePath))
-            {
-                return false;
-            }
-            _fileUploadsCancelationTokens.TryAdd(filePath, cancellationTokenSource);
-            _changedFiles.Add(filePath);
-
-            string fullPath = GetFullPath(filePath);
-            FileInfo fileInfo;
-            if (!_filesInfos.ContainsKey(filePath))
-            {
-                fileInfo = new FileInfo()
+                _changedFiles.Add(filePath);
+                FileInfo fileInfo;
+                if (!_filesInfos.ContainsKey(filePath))
                 {
-                    RelativePath = filePath,
-                    FileInfoGroupId = _fileInfoGroup.Id
-                };
-            }
-            else
-            {
-                fileInfo = _filesInfos[filePath];
-            }
-
-            if (File.Exists(fullPath))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
-                File.Move(fullPath, GetFullTmpPath(filePath));
-            }
-
-            fileInfo.Hash = await CreateFileFromStreamAsync(originalFileStream, fullPath, cancellationTokenSource.Token);
-            if (cancellationTokenSource.IsCancellationRequested)
-            {
-                if (File.Exists(GetFullPath(filePath)))
-                {
-                    File.Delete(GetFullPath(filePath));
+                    fileInfo = new FileInfo()
+                    {
+                        RelativePath = filePath,
+                        FileInfoGroupId = _fileInfoGroup.Id
+                    };
                 }
-                return false;
-            }
-            if (!_filesInfos.ContainsKey(filePath))
-            {
-                _filesInfos.Add(filePath, fileInfo);
-                _unitOfWork.FileInfoRepository.Create(fileInfo);
-            }
-            else
-            {
-                _unitOfWork.FileInfoRepository.Update(fileInfo);
-            }
+                else
+                {
+                    fileInfo = _filesInfos[filePath];
+                }
 
-            _fileUploadsCancelationTokens.Remove(filePath, out _);
-            return true;
+                string fullPath = GetFullPath(filePath);
+                if (File.Exists(fullPath))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
+                    File.Move(fullPath, GetFullTmpPath(filePath));
+                }
+                try
+                {
+                    fileInfo.Hash = await CreateFileFromStreamAsync(originalFileStream, fullPath, _cancellationTokenSource.Token);
+                }
+                catch
+                {
+                    if (_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        if (File.Exists(GetFullPath(filePath)))
+                        {
+                            File.Delete(GetFullPath(filePath));
+                        }
+                    }
+                    throw;
+                }
+
+                if (!_filesInfos.ContainsKey(filePath))
+                {
+                    _filesInfos.TryAdd(filePath, fileInfo);
+                    _unitOfWork.FileInfoRepository.Create(fileInfo);
+                }
+                else
+                {
+                    _unitOfWork.FileInfoRepository.Update(fileInfo);
+                }
+
+                return true;
+            }
+            finally
+            {
+                semaphoreSlim.Release();
+            }
         }
         /// <summary>
         /// Удаление файла. Каждый путь может быть использован только 1 раз.
@@ -151,38 +153,39 @@ namespace Files_cloud_manager.Server.Services
         /// <returns></returns>
         public bool DeleteFile(string filePath)
         {
-            lock (_activeFileAcesses)
+            SemaphoreSlim semaphoreSlim = GetSemaphoreForFilePath(filePath);
+
+            semaphoreSlim.Wait();
+            try
             {
-                if (_activeFileAcesses.Contains(filePath))
+                if (!_isSyncStarted || !_filesInfos.ContainsKey(filePath))
                 {
                     return false;
                 }
-                _activeFileAcesses.Add(filePath);
-            }
 
-            if (!_isSyncStarted)
+                FileInfo fileInfo = _filesInfos[filePath];
+                string fullPath = GetFullPath(filePath);
+
+                if (File.Exists(fullPath))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
+                    File.Move(fullPath, GetFullTmpPath(filePath));
+                }
+                else
+                {
+                    return false;
+                }
+
+                _changedFiles.Add(filePath);
+                _filesInfos.TryRemove(filePath, out _);
+                _unitOfWork.FileInfoRepository.Delete(fileInfo);
+
+                return true;
+            }
+            finally
             {
-                return false;
+                semaphoreSlim.Release();
             }
-            if (!_filesInfos.ContainsKey(filePath))
-            {
-                return false;
-            }
-
-            FileInfo fileInfo = _filesInfos[filePath];
-            string fullPath = GetFullPath(filePath);
-
-            if (File.Exists(fullPath))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(GetFullTmpPath(filePath)));
-                File.Move(fullPath, GetFullTmpPath(filePath));
-            }
-
-            _changedFiles.Add(filePath);
-            _filesInfos.Remove(filePath);
-            _unitOfWork.FileInfoRepository.Delete(fileInfo);
-
-            return true;
         }
         /// <summary>
         /// Чтение файла.
@@ -192,17 +195,11 @@ namespace Files_cloud_manager.Server.Services
         /// <returns></returns>
         public Stream GetFile(string filePath)
         {
-            lock (_activeFileAcesses)
-            {
-                if (_activeFileAcesses.Contains(filePath))
-                {
-                    return null;
-                }
-                _activeFileAcesses.Add(filePath);
-            }
+            SemaphoreSlim semaphoreSlim = GetSemaphoreForFilePath(filePath);
+            semaphoreSlim.Wait();
             try
             {
-                if (!_filesInfos.ContainsKey(filePath))
+                if (!_isSyncStarted || !_filesInfos.ContainsKey(filePath))
                 {
                     return null;
                 }
@@ -217,10 +214,7 @@ namespace Files_cloud_manager.Server.Services
             }
             finally
             {
-                lock (_activeFileAcesses)
-                {
-                    _activeFileAcesses.Remove(filePath);
-                }
+                semaphoreSlim.Release();
             }
         }
         public List<FileInfoDTO> GetFilesInfos()
@@ -229,15 +223,16 @@ namespace Files_cloud_manager.Server.Services
         }
         public bool EndSynchronization()
         {
-            lock (_syncLock)
+            lock (_semaphoresForFiles)
             {
                 if (!_isSyncStarted)
                 {
                     return false;
                 }
-                if (!_fileUploadsCancelationTokens.IsEmpty)
+                foreach (var item in _semaphoresForFiles.Values)
                 {
-                    return false;
+                    // Проверка того, что все операции с файлами завершены.
+                    item.Wait();
                 }
 
                 if (Directory.Exists(GetFullTmpPath("")))
@@ -252,16 +247,17 @@ namespace Files_cloud_manager.Server.Services
         }
         public bool RollBackSynchronization()
         {
-            lock (_syncLock)
+            lock (_semaphoresForFiles)
             {
                 if (!_isSyncStarted)
                 {
                     return false;
                 }
-
-                foreach (var item in _fileUploadsCancelationTokens)
+                _cancellationTokenSource.Cancel();
+                foreach (var item in _semaphoresForFiles.Values)
                 {
-                    item.Value.Cancel();
+                    // Проверка того, что все операции с файлами завершены.
+                    item.Wait();
                 }
 
                 foreach (string item in _changedFiles)
@@ -299,13 +295,31 @@ namespace Files_cloud_manager.Server.Services
             {
                 await originalFileStream.CopyToAsync(cryptoStream, cancellationToken);
             }
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return null;
-            }
             return hashAlgorithm.Hash;
 
         }
+
+        private SemaphoreSlim GetSemaphoreForFilePath(string filePath)
+        {
+            lock (_semaphoresForFiles)
+            {
+                if (!_isSyncStarted)
+                    throw new Exception("Попытка изменить файл без начала синхронизации");
+                if (!_semaphoresForFiles.ContainsKey(filePath))
+                {
+                    _semaphoresForFiles.TryAdd(filePath, new SemaphoreSlim(1));
+                }
+                return _semaphoresForFiles[filePath];
+            }
+        }
+
+        /// <summary>
+        /// Получить доступ к файлу с путём. К каждому файлу может быть получен доступ только 1 раз.
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+
+
         private bool CheckIfFileNameIsValid(string name)
         {
             return !name.IsNullOrEmpty() &&
