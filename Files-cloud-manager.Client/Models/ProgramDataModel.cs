@@ -76,26 +76,34 @@ namespace Files_cloud_manager.Client.Models
         public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection, CancellationToken cancellationToken)
         {
             // todo добавить cancelToken.
+           
+            if (!_isFileDiffCollectionSync)
+            {
+                await CompareLocalFilesToServerAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             if (!await EnsureSyncStartedAsync().ConfigureAwait(false))
             {
                 return false;
             }
 
-            if (!_isFileDiffCollectionSync)
-            {
-                await CompareLocalFilesToServerAsync(cancellationToken);
-            }
-
-            await _fileDifferencesCollectionLock.WaitAsync();
+            await _fileDifferencesCollectionLock.WaitAsync().ConfigureAwait(false);
             try
             {
-                List<Task> fileDonwloads = new List<Task>();
+                List<Task<bool>> fileDonwloads = new List<Task<bool>>();
                 foreach (var fileDiff in _fileDifferences)
                 {
                     fileDonwloads.Add(SynchronizeFileAsync(syncDirection, fileDiff, cancellationToken));
                 }
                 await Task.WhenAll(fileDonwloads).ConfigureAwait(false);
-                await _connectionService.EndSyncAsync().ConfigureAwait(false);
+                if (fileDonwloads.Any(e => !e.IsCompletedSuccessfully || !e.Result))
+                {
+                    throw new Exception("Ошибка при отправке файлов");
+                }
+                if (!await _connectionService.EndSyncAsync().ConfigureAwait(false))
+                {
+                    throw new Exception("Ошибка при завершении синхронизации");
+                }
                 _fileDifferences.Clear();
                 _isFileDiffCollectionSync = false;
             }
@@ -174,6 +182,7 @@ namespace Files_cloud_manager.Client.Models
             }
             finally
             {
+                await _connectionService.RollBackSyncAsync().ConfigureAwait(false);
                 _fileDifferencesCollectionLock.Release();
             }
         }

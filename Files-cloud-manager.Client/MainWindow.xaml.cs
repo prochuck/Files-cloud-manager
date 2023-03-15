@@ -1,4 +1,5 @@
-﻿using Files_cloud_manager.Client.Models;
+﻿using Files_cloud_manager.Client.Configs;
+using Files_cloud_manager.Client.Models;
 using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
 using Files_cloud_manager.Client.ViewModels;
@@ -34,6 +35,8 @@ namespace Files_cloud_manager.Client
             services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
             services.AddTransient<IServerConnectionService, ServerConnectionService>();
             services.AddTransient<ModelFactory>();
+            services.AddSingleton<DialogServiceConfig>(e=>new DialogServiceConfig() { MainWindow=this});
+            services.AddTransient<IDialogService,DialogService>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -47,7 +50,7 @@ namespace Files_cloud_manager.Client
             //  var b = scope.ServiceProvider.GetService<IServerConnectionService>();
             //b.LoginAsync("admin", "123").Wait();
 
-            this.DataContext = new ProgramListViewModel(b);
+            this.DataContext = new ProgramListViewModel(b, scope.ServiceProvider.GetRequiredService<IDialogService>());
 
 
             //   CancellationTokenSource source = new CancellationTokenSource();
