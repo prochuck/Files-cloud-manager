@@ -18,7 +18,7 @@ using System.Windows.Data;
 namespace Files_cloud_manager.Client.Models
 {
     //Алгоритмы хэширования приколы с ними
-    class ProgramDataModel : IDisposable, IValidatableObject
+    class ProgramDataModel : IDisposable
     {
         // todo сделать синхронизацию алгоритмов хэширования с сервером
         // todo Сделать откат изменений на клиенте.
@@ -57,19 +57,6 @@ namespace Files_cloud_manager.Client.Models
 
 
             BindingOperations.EnableCollectionSynchronization(FileDifferences, new object());
-            //    new CollectionSynchronizationCallback((col, context, action, isWrite) =>
-            //{
-            //    _fileDifferencesCollectionLock.Wait();
-            //    try
-            //    {
-            //        action();
-            //    }
-            //    finally
-            //    {
-            //        _fileDifferencesCollectionLock.Release();
-            //    }
-            //}));
-
         }
 
 
@@ -190,7 +177,6 @@ namespace Files_cloud_manager.Client.Models
 
         private async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file, CancellationToken cancellationToken)
         {
-            // Ошибка появляется в случае, если после синхронизации файлов, файлы в папке изменяются.
             switch (direction)
             {
                 case SyncDirection.FromServer:
@@ -247,19 +233,7 @@ namespace Files_cloud_manager.Client.Models
             _connectionService.RollBackSyncAsync().RunSynchronously();
             _connectionService.Dispose();
         }
-        // todo доделать
-        /// <summary>
-        /// Не доделано.
-        /// </summary>
-        /// <param name="validationContext"></param>
-        /// <returns></returns>
-        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-        {
-            if (CheckIfFileNameIsValid(PathToExe) || !File.Exists(PathToExe))
-                yield return new ValidationResult("Путь к exe не верен");
-            if (CheckIfFileNameIsValid(PathToData) || !Directory.Exists(PathToData))
-                yield return new ValidationResult("Путь к данным не верен");
-        }
+      
         // todo сделать проверку имени файла лучше
         private bool CheckIfFileNameIsValid(string name)
         {

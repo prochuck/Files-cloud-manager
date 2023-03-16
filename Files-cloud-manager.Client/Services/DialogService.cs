@@ -1,5 +1,6 @@
 ﻿using FileCloudAPINameSpace;
 using Files_cloud_manager.Client.Configs;
+using Files_cloud_manager.Client.Services.Interfaces;
 using Files_cloud_manager.Client.ViewModels;
 using Files_cloud_manager.Client.Views;
 using System;

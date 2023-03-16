@@ -75,7 +75,17 @@ namespace Files_cloud_manager.Client.Services.Interfaces
         /// </summary>
         /// <returns>Список файловых групп</returns>
         Task<ICollection<FileInfoGroupDTO>> GetFileInfoGroupsAsync();
+        /// <summary>
+        /// Откатить синхронизацию по имени группы. 
+        /// </summary>
+        /// <param name="groupName">Имя группы, которая будет откачена.</param>
+        /// <returns></returns>
         Task<bool> RollBackSyncAsync(string groupName);
+        /// <summary>
+        /// Создать файловую группу.
+        /// </summary>
+        /// <param name="groupName">Имя группы, которая будет создана</param>
+        /// <returns></returns>
         Task<bool> CreateFileGroupAsync(string groupName);
     }
 }

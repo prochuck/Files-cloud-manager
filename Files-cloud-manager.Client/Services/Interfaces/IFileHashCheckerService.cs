@@ -5,6 +5,9 @@ using System.Threading;
 
 namespace Files_cloud_manager.Client.Services.Interfaces
 {
+    /// <summary>
+    /// Сервис ответственный за работу с хэшами
+    /// </summary>
     internal interface IFileHashCheckerService
     {
         /// <summary>
