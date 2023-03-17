@@ -15,7 +15,7 @@ namespace Files_cloud_manager.Client.Services
 {
     internal class ServerConnectionService : IDisposable, IServerConnectionService
     {
-        //todo сделать что-то с syncId
+        // todo сделать что-то с syncId
         // todo вынести syncId из serverconnection в programdatamodel
         public bool IsLoogedIn { get; private set; } = false;
         public bool IsSyncStarted { get; private set; } = false;
@@ -230,9 +230,7 @@ namespace Files_cloud_manager.Client.Services
             {
                 try
                 {
-                    await _swaggerClient.CreateOrUpdateFileAsync(_currentSyncId, filePath, new FileParameter(file), cancellationToken);
-
-
+                    await _swaggerClient.CreateOrUpdateFileAsync(_currentSyncId, filePath, new FileParameter(file), cancellationToken).ConfigureAwait(false);
                     return true;
                 }
                 catch
