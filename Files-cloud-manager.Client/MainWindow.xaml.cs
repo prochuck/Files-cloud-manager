@@ -32,11 +32,18 @@ namespace Files_cloud_manager.Client
 
             // todo перенести.
             var services = new ServiceCollection();
+            services.AddSingleton<DialogServiceConfig>(e => new DialogServiceConfig() { MainWindow = this });
+            services.AddSingleton<ProgramListCaretakerConfig>(e => new ProgramListCaretakerConfig()
+            {
+            });
+
+
             services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
             services.AddTransient<IServerConnectionService, ServerConnectionService>();
+            services.AddTransient<IDialogService, DialogService>();
+            services.AddTransient<IProgramListCaretaker, ProgramListCaretaker>();
             services.AddTransient<ModelFactory>();
-            services.AddSingleton<DialogServiceConfig>(e=>new DialogServiceConfig() { MainWindow=this});
-            services.AddTransient<IDialogService,DialogService>();
+
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -45,12 +52,14 @@ namespace Files_cloud_manager.Client
             var a = scope.ServiceProvider.GetRequiredService<ModelFactory>();
             var b = a.CreateProgramsListModel("admin", "123");
 
-            b.CreateNewProgramData("", "C:\\programsM\\file\\test", "test5");
 
             //  var b = scope.ServiceProvider.GetService<IServerConnectionService>();
             //b.LoginAsync("admin", "123").Wait();
 
-            this.DataContext = new ProgramListViewModel(b, scope.ServiceProvider.GetRequiredService<IDialogService>());
+            this.DataContext = new ProgramListViewModel(
+                b,
+                scope.ServiceProvider.GetRequiredService<IProgramListCaretaker>(),
+                scope.ServiceProvider.GetRequiredService<IDialogService>());
 
 
             //   CancellationTokenSource source = new CancellationTokenSource();

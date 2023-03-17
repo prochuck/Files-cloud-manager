@@ -1,5 +1,6 @@
 ﻿using Files_cloud_manager.Client.Commands;
 using Files_cloud_manager.Client.Models;
+using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
 using Files_cloud_manager.Client.Views;
 using System;
@@ -21,6 +22,7 @@ namespace Files_cloud_manager.Client.ViewModels
         private ProgramDataViewModel _selectedProgram;
 
         private IDialogService _dialogService;
+        IProgramListCaretaker _programListCaretaker;
 
         public ProgramDataViewModel SelectedProgram
         {
@@ -42,10 +44,14 @@ namespace Files_cloud_manager.Client.ViewModels
 
 
 
-        public ProgramListViewModel(ProgramsListModel model,IDialogService dialogService)
+        public ProgramListViewModel(ProgramsListModel model, IProgramListCaretaker programListCaretaker, IDialogService dialogService)
         {
-            _dialogService=dialogService;
+            _dialogService = dialogService;
             _model = model;
+            _programListCaretaker = programListCaretaker;
+
+            _model.SetMemento(_programListCaretaker.Memento);
+
             ProgramsList = new ObservableCollection<ProgramDataViewModel>();
 
             CreateProgramDataCommand = new Command(e => CreateProgramData(), null);
@@ -55,7 +61,6 @@ namespace Files_cloud_manager.Client.ViewModels
                 ProgramsList.Add(new ProgramDataViewModel(item));
             }
         }
-
         public void CreateProgramData()
         {
             _model.UpdateFileGroups();
@@ -68,13 +73,15 @@ namespace Files_cloud_manager.Client.ViewModels
             try
             {
                 ProgramsList.Add(new ProgramDataViewModel(
-                    _model.CreateNewProgramData(
+                    _model.CreateProgramData(
                         groupCreationViewModel.PathToExe,
                         groupCreationViewModel.PathToData,
                         groupCreationViewModel.GroupName
                         )
                     ));
 
+                _programListCaretaker.Memento = _model.CreateMemento();
+                _programListCaretaker.SaveToFile();
             }
             catch (Exception e)
             {

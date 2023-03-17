@@ -1,9 +1,12 @@
 ﻿using FileCloudAPINameSpace;
+using Files_cloud_manager.Client.Models.DTO;
+using Files_cloud_manager.Client.Models.States;
 using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -48,7 +51,7 @@ namespace Files_cloud_manager.Client.Models
 
         }
         // todo сделать проверку путей
-        public ProgramDataModel CreateNewProgramData(string PathToExe, string PathToData, string GroupName)
+        public ProgramDataModel CreateProgramData(string PathToExe, string PathToData, string GroupName)
         {
             UpdateFileGroups();
             if (!Path.IsPathRooted(PathToData))
@@ -67,17 +70,62 @@ namespace Files_cloud_manager.Client.Models
                 }
             }
             var model = _ModelFactory.CreateProgramDataModel(_connectionService, PathToExe, PathToData, GroupName);
-            _programsList.Add(model);
+            lock (_programsList)
+            {
+                _programsList.Add(model);
+            }
             return model;
         }
-
         public void UpdateFileGroups()
         {
-            _fileGroups.Clear();
-            foreach (var item in _connectionService.GetFileInfoGroupsAsync().Result)
+            lock (_fileGroups)
             {
-                _fileGroups.Add(item);
+                _fileGroups.Clear();
+                foreach (var item in _connectionService.GetFileInfoGroupsAsync().Result)
+                {
+                    _fileGroups.Add(item);
+                }
             }
+        }
+
+        public void SetMemento(ProgramListMemento memento)
+        {
+            if (memento is null)
+            {
+                return;
+            }
+            UpdateFileGroups();
+            lock (_fileGroups)
+            {
+                var a = Enumerable.Except(memento.ProgramsList.Select(e => e.GroupName), _fileGroups.Select(e => e.Name));
+                if (a.Count() != 0)
+                {
+                    throw new Exception($"Группы с именами: {string.Join(" ", a)} - не существуют на сервере");
+                }
+            }
+
+            lock (_programsList)
+            {
+                _programsList.Clear();
+                foreach (var item in memento.ProgramsList)
+                {
+                    var dataModel = _ModelFactory.CreateProgramDataModel(_connectionService, item.PathToExe, item.PathToData, item.GroupName);
+                    _programsList.Add(dataModel);
+                }
+            }
+        }
+
+        public ProgramListMemento CreateMemento()
+        {
+            ProgramListMemento memento = new ProgramListMemento();
+            lock (_programsList)
+            {
+                foreach (var item in _programsList)
+                {
+                    memento.ProgramsList.Add(new ProgramDataModelDTO(item));
+                }
+            }
+            return memento;
         }
 
     }
