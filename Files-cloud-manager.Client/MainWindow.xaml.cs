@@ -3,6 +3,7 @@ using Files_cloud_manager.Client.Models;
 using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
 using Files_cloud_manager.Client.ViewModels;
+using Files_cloud_manager.Client.Views;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Files_cloud_manager.Client
 {
@@ -27,6 +29,7 @@ namespace Files_cloud_manager.Client
     /// </summary>
     public partial class MainWindow : Window
     {
+        IServiceScope _scope;
         public MainWindow()
         {
 
@@ -38,39 +41,41 @@ namespace Files_cloud_manager.Client
                 PathToSaveFile = "C:\\programsM\\file\\groups.json"
             });
 
-
             services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
             services.AddTransient<IServerConnectionService, ServerConnectionService>();
-            services.AddTransient<IDialogService, DialogService>();
+            services.AddSingleton<IDialogService, DialogService>();
             services.AddTransient<IProgramListCaretaker, ProgramListCaretaker>();
             services.AddSingleton<ModelFactory>();
 
+            var _provider = services.BuildServiceProvider();
 
-            var serviceProvider = services.BuildServiceProvider();
+            _scope = _provider.CreateScope();
 
-            var scope = serviceProvider.CreateScope();
+            var a = _scope.ServiceProvider.GetRequiredService<ModelFactory>();
 
-            var a = scope.ServiceProvider.GetRequiredService<ModelFactory>();
-            var b = a.CreateProgramsListModel("admin", "123");
+            var thing = _scope.ServiceProvider.GetRequiredService<IDialogService>();
+            thing.RegisterDialog<LoginViewModel, LoginView>();
+            thing.RegisterDialog<GroupCreationViewModel, GroupCreationView>();
 
+            
 
-            //  var b = scope.ServiceProvider.GetService<IServerConnectionService>();
-            //b.LoginAsync("admin", "123").Wait();
+            InitializeComponent();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            var thing = _scope.ServiceProvider.GetRequiredService<IDialogService>();
+            var res = thing.ShowLoginDialog();
+            if (res is null)
+            {
+                this.Close();
+                return;
+            }
 
             this.DataContext = new ProgramListViewModel(
-                b,
-                scope.ServiceProvider.GetRequiredService<IProgramListCaretaker>(),
-                scope.ServiceProvider.GetRequiredService<IDialogService>());
-
-
-            //   CancellationTokenSource source = new CancellationTokenSource();
-
-            // Console.WriteLine();
-
-            // programDataModel.Login();
-
-            //Console.WriteLine();
-            InitializeComponent();
+                res.ProgramsListModel,
+                _scope.ServiceProvider.GetRequiredService<IProgramListCaretaker>(),
+                _scope.ServiceProvider.GetRequiredService<IDialogService>());
         }
     }
 }

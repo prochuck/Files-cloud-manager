@@ -3,16 +3,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Files_cloud_manager.Client.Views"
-		ResizeMode="NoResize"
+        xmlns:local="clr-namespace:Files_cloud_manager.Client.Views" xmlns:viewmodels="clr-namespace:Files_cloud_manager.Client.ViewModels" d:DataContext="{d:DesignInstance Type=viewmodels:LoginViewModel}"
+        ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         mc:Ignorable="d"
-        Title="LoginView" Height="273" Width="527">
-	<Grid>
-		<TextBox x:Name="textBox" HorizontalAlignment="Center" Margin="0,95,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="306"/>
-		<PasswordBox x:Name="passwordBox" Password="" HorizontalAlignment="Center"  Margin="0,142,0,0" VerticalAlignment="Top" Width="306"/>
-		<Label x:Name="label" Content="Логин" HorizontalAlignment="Left" Margin="111,64,0,0" VerticalAlignment="Top"/>
-		<Label x:Name="label1" Content="Пароль" HorizontalAlignment="Left" Margin="111,0,0,0" VerticalAlignment="Center"/>
-		<Button x:Name="button" Content="Login" HorizontalAlignment="Center" Margin="0,191,0,0" VerticalAlignment="Top" Width="81" Height="34"/>
-	</Grid>
+        Title="LoginView" Height="273" Width="527"
+        >
+    <Grid>
+        <TextBox x:Name="textBox" HorizontalAlignment="Center" Margin="0,75,0,0" TextWrapping="Wrap" Text="{Binding Login}" VerticalAlignment="Top" Width="306"/>
+        <Label x:Name="label" Content="Логин" HorizontalAlignment="Left" Margin="111,44,0,0" VerticalAlignment="Top"/>
+        <Label x:Name="label1" Content="Пароль" HorizontalAlignment="Left" Margin="111,95,0,0" VerticalAlignment="Top"/>
+        <Button x:Name="button" Content="Login" HorizontalAlignment="Center" Margin="0,171,0,0" VerticalAlignment="Top" Width="81" Height="34" Click="button_Click"/>
+        <PasswordBox x:Name="textBox_Copy"  HorizontalAlignment="Center" Margin="0,129,0,0" PasswordChanged="textBox_Copy_PasswordChanged"  VerticalAlignment="Top" Width="306"/>
+    </Grid>
 </Window>

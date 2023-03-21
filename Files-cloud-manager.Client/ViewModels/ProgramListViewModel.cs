@@ -31,6 +31,7 @@ namespace Files_cloud_manager.Client.ViewModels
         }
 
         public ICommand CreateProgramDataCommand { get; private set; }
+        public ICommand LogIn { get; private set; }
 
         private ProgramsListModel _model;
 
@@ -50,11 +51,16 @@ namespace Files_cloud_manager.Client.ViewModels
 
             CreateProgramDataCommand = new Command(e => CreateProgramData(), null);
 
+            LogIn = new Command(e => _dialogService.ShowLoginDialog()) ;
+
             foreach (var item in _model.ProgramsList)
             {
                 ProgramsList.Add(new ProgramDataViewModel(item));
             }
         }
+
+
+
         public void CreateProgramData()
         {
             _model.UpdateFileGroups();

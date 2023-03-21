@@ -22,16 +22,12 @@ namespace Files_cloud_manager.Client.Models
         private ObservableCollection<ProgramDataModel> _programsList;
         private ObservableCollection<FileInfoGroupDTO> _fileGroups;
         private ModelFactory _ModelFactory;
-        private string _login;
-        private string _password;
 
         private IServerConnectionService _connectionService;
 
-        public ProgramsListModel(string login, string password, ModelFactory ModelFactory, IServerConnectionService serverConnectionService)
+        public ProgramsListModel(ModelFactory ModelFactory, IServerConnectionService serverConnectionService)
         {
             _ModelFactory = ModelFactory;
-            _login = login;
-            _password = password;
 
             // todo Загрузку из файла списка программ.
             _programsList = new ObservableCollection<ProgramDataModel>();
