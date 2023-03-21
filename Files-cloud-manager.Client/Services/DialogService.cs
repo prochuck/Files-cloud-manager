@@ -15,27 +15,36 @@ namespace Files_cloud_manager.Client.Services
 {
     internal class DialogService : IDialogService
     {
+        private IServiceProvider _serviceProvider;
         private Window _mainWindow;
 
-        private Dictionary<Type, Type> viewViewModelPairs = new Dictionary<Type, Type>();
+        private Dictionary<Type, Type> _viewModelViewPairs = new Dictionary<Type, Type>();
 
-        public DialogService(DialogServiceConfig config)
+        public DialogService(DialogServiceConfig config, IServiceProvider serviceProvider)
         {
             _mainWindow = config.MainWindow;
+            _serviceProvider = serviceProvider;
         }
 
-        public T ShowDialog<T>(object? param)
+        public void RegisterDialog<TViewModel, TView>() where TView : Window where TViewModel : ViewModelBase
         {
-            
+            _viewModelViewPairs.Add(typeof(TViewModel), typeof(TView));
         }
 
-        public GroupCreationViewModel ShowGroupCreationDialog(List<FileInfoGroupDTO> fileInfoGroupDTOs)
+        public T ShowDialog<T>(params object[] parameters) where T : ViewModelBase
         {
-            GroupCreationView groupCreationView = new GroupCreationView(fileInfoGroupDTOs);
-            groupCreationView.Owner = _mainWindow;
-            if (groupCreationView.ShowDialog() is bool res && res)
+            Window view;
+
+            view = (Window)ActivatorUtilities.CreateInstance(_serviceProvider, _viewModelViewPairs[typeof(T)], parameters);
+
+            view.Owner = _mainWindow;
+            if (view.ShowDialog() is bool res && res)
             {
-                return groupCreationView.DataContext as GroupCreationViewModel;
+                if (view.DataContext is not T)
+                {
+                    throw new Exception($"DataContext view не является типом {nameof(T)}");
+                }
+                return ((T)view.DataContext);
             }
             else
             {
@@ -43,5 +52,13 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
+        public GroupCreationViewModel ShowGroupCreationDialog(List<FileInfoGroupDTO> fileInfoGroupDTOs)
+        {
+            return ShowDialog<GroupCreationViewModel>(fileInfoGroupDTOs);
+        }
+        public LoginViewModel ShowLoginDialog()
+        {
+            return ShowDialog<LoginViewModel>();
+        }
     }
 }
