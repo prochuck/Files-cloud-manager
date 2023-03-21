@@ -34,8 +34,8 @@ namespace Files_cloud_manager.Client.Services
             var res = new ProgramsListModel(
                 login,
                 password,
-                _serviceScope.ServiceProvider.GetService<ModelFactory>(),
-                _serviceScope.ServiceProvider.GetService<IServerConnectionService>());
+                _serviceScope.ServiceProvider.GetService<ModelFactory>()!,
+                _serviceScope.ServiceProvider.GetService<IServerConnectionService>()!);
             return res;
         }
 

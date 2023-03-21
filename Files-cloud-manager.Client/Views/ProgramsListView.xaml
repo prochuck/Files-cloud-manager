@@ -1,0 +1,25 @@
+﻿<UserControl x:Class="Files_cloud_manager.Client.Views.ProgramsListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Files_cloud_manager.Client.Views" 
+			 xmlns:viewmodels="clr-namespace:Files_cloud_manager.Client.ViewModels"
+             d:DataContext="{d:DesignInstance Type=viewmodels:ProgramListViewModel}"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="15*"/>
+			<RowDefinition Height="3*"/>
+		</Grid.RowDefinitions>
+		<ListBox x:Name="textBloc" SelectedItem="{Binding SelectedProgram}" ItemsSource="{Binding ProgramsList}" Grid.Row="0">
+			<ListBox.ItemTemplate>
+				<DataTemplate>
+					<TextBlock Text="{Binding Path=GroupName}"/>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
+		<Button x:Name="button" Content="Создать новую" Command="{Binding Path=CreateProgramDataCommand}" Grid.Row="1"/>
+	</Grid>
+</UserControl>

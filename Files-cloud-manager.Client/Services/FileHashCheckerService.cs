@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -18,7 +19,7 @@ namespace Files_cloud_manager.Client.Services
         public async IAsyncEnumerable<FileDifferenceModel> GetHashDifferencesAsync(
             IEnumerable<FileInfoDTO> fileInfos,
             string pathToFiles,
-            CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             await _semaphoreSlim.WaitAsync();
             try

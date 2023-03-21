@@ -20,19 +20,11 @@ namespace Files_cloud_manager.Client.ViewModels
         public ObservableCollection<ProgramDataViewModel> ProgramsList { get; private set; }
 
         private ProgramDataViewModel _selectedProgram;
-
-        private IDialogService _dialogService;
-        IProgramListCaretaker _programListCaretaker;
-
         public ProgramDataViewModel SelectedProgram
         {
             get { return _selectedProgram; }
             set
             {
-                if (_selectedProgram is not null)
-                {
-                    _selectedProgram.CancelOperations();
-                }
                 _selectedProgram = value;
                 OnPropertyChanged(nameof(SelectedProgram));
             }
@@ -42,6 +34,8 @@ namespace Files_cloud_manager.Client.ViewModels
 
         private ProgramsListModel _model;
 
+        private IDialogService _dialogService;
+        private IProgramListCaretaker _programListCaretaker;
 
 
         public ProgramListViewModel(ProgramsListModel model, IProgramListCaretaker programListCaretaker, IDialogService dialogService)

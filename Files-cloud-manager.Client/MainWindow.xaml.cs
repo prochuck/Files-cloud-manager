@@ -35,6 +35,7 @@ namespace Files_cloud_manager.Client
             services.AddSingleton<DialogServiceConfig>(e => new DialogServiceConfig() { MainWindow = this });
             services.AddSingleton<ProgramListCaretakerConfig>(e => new ProgramListCaretakerConfig()
             {
+                PathToSaveFile = "C:\\programsM\\file\\groups.json"
             });
 
 
