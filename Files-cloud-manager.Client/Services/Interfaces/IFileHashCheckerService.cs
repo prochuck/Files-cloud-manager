@@ -8,7 +8,7 @@ namespace Files_cloud_manager.Client.Services.Interfaces
     /// <summary>
     /// Сервис ответственный за работу с хэшами
     /// </summary>
-    internal interface IFileHashCheckerService
+    public interface IFileHashCheckerService
     {
         /// <summary>
         /// Сравнение переданных в функцию хэшей файлов и файлов на диске.

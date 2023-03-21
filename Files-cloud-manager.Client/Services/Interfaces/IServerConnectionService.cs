@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Services.Interfaces
 {
-    internal interface IServerConnectionService : IDisposable
+    public interface IServerConnectionService : IDisposable
     {
         public bool IsLoogedIn { get; }
         /// <summary>

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Models.States
 {
-    internal class ProgramListMemento
+    public class ProgramListMemento
     {
         public List<ProgramDataModelDTO> ProgramsList { get; set; } = new List<ProgramDataModelDTO>();
     }

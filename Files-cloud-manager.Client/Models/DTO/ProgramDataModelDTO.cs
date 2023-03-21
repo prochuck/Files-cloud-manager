@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Files_cloud_manager.Client.Models.DTO
 {
     [Serializable]
-    internal class ProgramDataModelDTO
+    public class ProgramDataModelDTO
     {
         public ProgramDataModelDTO()
         {

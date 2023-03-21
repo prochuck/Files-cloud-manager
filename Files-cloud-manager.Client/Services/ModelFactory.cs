@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Services
 {
-    internal class ModelFactory : IDisposable
+    public class ModelFactory : IDisposable
     {
         private IServiceProvider _serviceProvider;
         private IServiceScope _serviceScope;
@@ -37,8 +37,6 @@ namespace Files_cloud_manager.Client.Services
                 return null;
             }
             var res = new ProgramsListModel(
-                login,
-                password,
                 _serviceScope.ServiceProvider.GetService<ModelFactory>()!,
                 connectionService);
             return res;

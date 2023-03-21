@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Models
 {
-    internal class ProgramsListModel
+    public class ProgramsListModel
     {
         public ReadOnlyObservableCollection<ProgramDataModel> ProgramsList { get; private set; }
         public ReadOnlyObservableCollection<FileInfoGroupDTO> FileGroups { get; private set; }

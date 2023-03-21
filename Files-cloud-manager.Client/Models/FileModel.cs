@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Files_cloud_manager.Client.Models
 {
-    internal class FileDifferenceModel
+    public class FileDifferenceModel
     {
         public FileInfoDTO File { get; set; }
         public FileState State { get; set; }

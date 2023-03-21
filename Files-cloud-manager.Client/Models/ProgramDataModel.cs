@@ -18,7 +18,7 @@ using System.Windows.Data;
 namespace Files_cloud_manager.Client.Models
 {
     //Алгоритмы хэширования приколы с ними
-    class ProgramDataModel : IDisposable
+    public class ProgramDataModel : IDisposable
     {
         // todo сделать синхронизацию алгоритмов хэширования с сервером
         // todo Сделать откат изменений на клиенте.
