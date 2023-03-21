@@ -29,13 +29,18 @@ namespace Files_cloud_manager.Client.Services
                 GroupName);
             return res;
         }
-        public ProgramsListModel CreateProgramsListModel(string login, string password)
+        public ProgramsListModel? CreateProgramsListModel(string login, string password)
         {
+            var connectionService= _serviceScope.ServiceProvider.GetService<IServerConnectionService>()!;
+            if (!connectionService.LoginAsync(login, password).Result)
+            {
+                return null;
+            }
             var res = new ProgramsListModel(
                 login,
                 password,
                 _serviceScope.ServiceProvider.GetService<ModelFactory>()!,
-                _serviceScope.ServiceProvider.GetService<IServerConnectionService>()!);
+                connectionService);
             return res;
         }
 

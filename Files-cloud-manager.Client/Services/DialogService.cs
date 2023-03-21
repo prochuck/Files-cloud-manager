@@ -3,6 +3,7 @@ using Files_cloud_manager.Client.Configs;
 using Files_cloud_manager.Client.Services.Interfaces;
 using Files_cloud_manager.Client.ViewModels;
 using Files_cloud_manager.Client.Views;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,16 @@ namespace Files_cloud_manager.Client.Services
     {
         private Window _mainWindow;
 
+        private Dictionary<Type, Type> viewViewModelPairs = new Dictionary<Type, Type>();
+
         public DialogService(DialogServiceConfig config)
         {
             _mainWindow = config.MainWindow;
+        }
+
+        public T ShowDialog<T>(object? param)
+        {
+            
         }
 
         public GroupCreationViewModel ShowGroupCreationDialog(List<FileInfoGroupDTO> fileInfoGroupDTOs)
@@ -34,5 +42,6 @@ namespace Files_cloud_manager.Client.Services
                 return null;
             }
         }
+
     }
 }

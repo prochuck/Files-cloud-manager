@@ -12,7 +12,7 @@ namespace Files_cloud_manager.Client.Commands
         private Action<object?> _execute;
         private Func<object?, bool>? _canExecute;
 
-        public Command(Action<object?> execute, Func<object?, bool>? canExecute)
+        public Command(Action<object?> execute, Func<object?, bool>? canExecute = null)
         {
             _execute = execute;
             _canExecute = canExecute;

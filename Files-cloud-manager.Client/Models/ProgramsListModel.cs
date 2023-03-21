@@ -37,9 +37,7 @@ namespace Files_cloud_manager.Client.Models
             _programsList = new ObservableCollection<ProgramDataModel>();
             ProgramsList = new ReadOnlyObservableCollection<ProgramDataModel>(_programsList);
 
-
-
-            if (!serverConnectionService.LoginAsync(login, password).Result)
+            if (!serverConnectionService.IsLoogedIn)
             {
                 throw new Exception("Wrong login/password");
             }

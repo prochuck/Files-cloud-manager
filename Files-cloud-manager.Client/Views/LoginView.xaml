@@ -1,0 +1,18 @@
+﻿<Window x:Class="Files_cloud_manager.Client.Views.LoginView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Files_cloud_manager.Client.Views"
+		ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        mc:Ignorable="d"
+        Title="LoginView" Height="273" Width="527">
+	<Grid>
+		<TextBox x:Name="textBox" HorizontalAlignment="Center" Margin="0,95,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="306"/>
+		<PasswordBox x:Name="passwordBox" Password="" HorizontalAlignment="Center"  Margin="0,142,0,0" VerticalAlignment="Top" Width="306"/>
+		<Label x:Name="label" Content="Логин" HorizontalAlignment="Left" Margin="111,64,0,0" VerticalAlignment="Top"/>
+		<Label x:Name="label1" Content="Пароль" HorizontalAlignment="Left" Margin="111,0,0,0" VerticalAlignment="Center"/>
+		<Button x:Name="button" Content="Login" HorizontalAlignment="Center" Margin="0,191,0,0" VerticalAlignment="Top" Width="81" Height="34"/>
+	</Grid>
+</Window>

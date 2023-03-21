@@ -345,13 +345,10 @@ namespace Files_cloud_manager.Server.Services
                 {
                     case LockTypes.ReadLock:
                         return (await syncContext.objectLocker.ReadLockAsync(), syncContext);
-                        break;
                     case LockTypes.WriteLock:
                         return (await syncContext.objectLocker.ReadLockAsync(), syncContext);
-                        break;
                     case LockTypes.UpgradeableLock:
                         return (await syncContext.objectLocker.UpgradeableReadLockAsync(), syncContext);
-                        break;
                     default:
                         break;
                 }

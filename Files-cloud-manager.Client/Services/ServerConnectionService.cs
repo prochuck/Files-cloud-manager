@@ -26,8 +26,6 @@ namespace Files_cloud_manager.Client.Services
 
         private Uri _baseAddress = new Uri("https://localhost:7216");
         private CookieContainer _cookieContainer;
-        private string _login;
-        private string _password;
         private HttpClient _httpClient;
         private FileCloudAPIClient _swaggerClient;
         private AsyncReaderWriterLock _coockieLock;
@@ -50,7 +48,7 @@ namespace Files_cloud_manager.Client.Services
             {
                 if (_cookieContainer.GetAllCookies().Where(e => e.Name == "FileCloudCoockie").First().Expires.CompareTo(DateTime.Now) < 0)
                 {
-                    await _swaggerClient.LoginAsync(_login, _password).ConfigureAwait(false);
+                    throw new Exception("сессия закончилась, перелогинтесь");
                 }
                 else
                 {
@@ -61,8 +59,6 @@ namespace Files_cloud_manager.Client.Services
 
         public async Task<bool> LoginAsync(string login, string password)
         {
-            _login = login;
-            _password = password;
             using (await _coockieLock.WriteLockAsync())
             {
                 try

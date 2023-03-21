@@ -43,7 +43,7 @@ namespace Files_cloud_manager.Client
             services.AddTransient<IServerConnectionService, ServerConnectionService>();
             services.AddTransient<IDialogService, DialogService>();
             services.AddTransient<IProgramListCaretaker, ProgramListCaretaker>();
-            services.AddTransient<ModelFactory>();
+            services.AddSingleton<ModelFactory>();
 
 
             var serviceProvider = services.BuildServiceProvider();

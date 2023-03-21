@@ -30,7 +30,7 @@ namespace Files_cloud_manager.Client.Commands
             }
         }
 
-        public AsyncCommand(Func<object?, Task> command, Func<object?, bool>? canExecute, Action<string?>? callBack)
+        public AsyncCommand(Func<object?, Task> command, Func<object?, bool>? canExecute = null, Action<string?>? callBack = null)
         {
             _execute = command;
             _canExecute = canExecute;
