@@ -21,7 +21,7 @@ namespace Files_cloud_manager.Client.Services
         /// <summary>
         /// Текущий ID синхронизации. -1, в случае если синхронизация не начата.
         /// </summary>
-  
+
 
 
         private Uri _baseAddress = new Uri("https://localhost:7216");
@@ -170,7 +170,7 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
-        public async Task<Stream> DonwloadFileAsync(int syncId,string filePath, CancellationToken cancellationToken)
+        public async Task<Stream> DonwloadFileAsync(int syncId, string filePath, CancellationToken cancellationToken)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -187,7 +187,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> CreateOrUpdateFileAsync(int syncId,string filePath, Stream file, CancellationToken cancellationToken)
+        public async Task<bool> CreateOrUpdateFileAsync(int syncId, string filePath, Stream file, CancellationToken cancellationToken)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -203,7 +203,7 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public async Task<bool> DeleteFileAsync(int syncId,string filePath)
+        public async Task<bool> DeleteFileAsync(int syncId, string filePath)
         {
             using (await _coockieLock.ReadLockAsync())
             {
@@ -247,6 +247,23 @@ namespace Files_cloud_manager.Client.Services
                 }
             }
         }
+
+        public async Task<bool> CheckIfSyncStartedAsync(string groupName)
+        {
+            using (await _coockieLock.ReadLockAsync())
+            {
+                try
+                {
+
+                    return await _swaggerClient.CheckIfSyncStartedForGroupAsync(groupName).ConfigureAwait(false);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
         public void Dispose()
         {
             LogoutAsync().RunSynchronously();

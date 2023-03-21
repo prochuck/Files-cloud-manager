@@ -30,7 +30,23 @@ namespace Files_cloud_manager.Server.Controllers
             _syncContainer = syncContainer;
         }
 
-
+        /// <summary>
+        /// Проверка начала синхронизации.
+        /// </summary>
+        /// <param name="fileInfoGroupName"></param>
+        /// <returns></returns>
+        [HttpPost(Name = "isSyncStartedForGroup")]
+        [ProducesResponseType(typeof(bool), 200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> CheckIfSyncStartedForGroupAsync(string fileInfoGroupName)
+        {
+            bool res = await _syncContainer.CheckIfSyncStartedForGroupAsync(GetUserId(), fileInfoGroupName);
+            if (res)
+            {
+                return Ok(res);
+            }
+            return BadRequest();
+        }
 
         /// <summary>
         /// Начало синхронизации файлов.
@@ -48,7 +64,6 @@ namespace Files_cloud_manager.Server.Controllers
                 return Ok(syncId);
             }
             return BadRequest();
-
         }
 
         [HttpPost(Name = "endSynchronization")]

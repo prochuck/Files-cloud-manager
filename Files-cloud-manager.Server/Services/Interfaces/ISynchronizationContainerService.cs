@@ -7,6 +7,8 @@ namespace Files_cloud_manager.Server.Services.Interfaces
     /// </summary>
     public interface ISynchronizationContainerService
     {
+        Task<bool> CheckIfSyncStartedForGroupAsync(int userId, string fileGroupName);
+
         /// <summary>
         /// Создать или заменить существующий файл.
         /// </summary>

@@ -86,5 +86,6 @@ namespace Files_cloud_manager.Client.Services.Interfaces
         /// <param name="groupName">Имя группы, которая будет создана</param>
         /// <returns></returns>
         Task<bool> CreateFileGroupAsync(string groupName);
+        Task<bool> CheckIfSyncStartedAsync(string groupName);
     }
 }

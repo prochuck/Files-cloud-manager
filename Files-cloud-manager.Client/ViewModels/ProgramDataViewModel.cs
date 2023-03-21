@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 
@@ -118,13 +119,48 @@ namespace Files_cloud_manager.Client.ViewModels
 
         public async Task SyncFilesAsync(SyncDirection syncDirection)
         {
+            if (await CheckIfSyncStartedAsync())
+            {
+                if (await SuggestRollbackSyncAsync())
+                {
+                    return;
+                }
+            }
             await _model.SynchronizeFilesAsync(syncDirection, CancellationTokenSource.Token).ConfigureAwait(false);
         }
 
         public async Task CompareLocalFilesToServerAsync()
         {
+            if (await CheckIfSyncStartedAsync())
+            {
+                if (!(await SuggestRollbackSyncAsync()))
+                {
+                    return;
+                }
+            }
             await _model.CompareLocalFilesToServerAsync(CancellationTokenSource.Token).ConfigureAwait(false);
         }
+
+        private async Task<bool> CheckIfSyncStartedAsync()
+        {
+            return await _model.CheckIfSyncForGroupStarted();
+        }
+
+        private async Task<bool> SuggestRollbackSyncAsync()
+        {
+            var res = MessageBox.Show($"Синхронизация для группы {_model.GroupName} уже начата.", "Откатить?", MessageBoxButton.YesNo);
+            if (res == MessageBoxResult.Yes)
+            {
+                return await _model.TryRollBackSyncByNameAsync();
+            }
+            else if (res == MessageBoxResult.No)
+            {
+                return false;
+            }
+            return false;
+        }
+
+
         public void Dispose()
         {
             CancellationTokenSource.Cancel();

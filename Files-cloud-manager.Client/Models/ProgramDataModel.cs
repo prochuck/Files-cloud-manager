@@ -138,12 +138,17 @@ namespace Files_cloud_manager.Client.Models
 
         public async Task<bool> TryRollBackSyncByNameAsync()
         {
-            var res= await _connectionService.RollBackSyncAsync(GroupName).ConfigureAwait(false);
+            var res = await _connectionService.RollBackSyncAsync(GroupName).ConfigureAwait(false);
             if (res)
             {
                 _syncId = -1;
             }
             return res;
+        }
+
+        public async Task<bool> CheckIfSyncForGroupStarted()
+        {
+            return await _connectionService.CheckIfSyncStartedAsync(GroupName).ConfigureAwait(false);
         }
 
         public async Task<ReadOnlyObservableCollection<FileDifferenceModel>> CompareLocalFilesToServerAsync(CancellationToken cancellationToken)

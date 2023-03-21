@@ -136,6 +136,7 @@ namespace Files_cloud_manager.Server.Services
         }
 
 
+
         public async Task<List<FileInfoDTO>> GetFilesInfosAsync(int userId, int syncId)
         {
 
@@ -325,6 +326,34 @@ namespace Files_cloud_manager.Server.Services
                 _createDeleteLock.Release();
             }
             return false;
+        }
+
+        public async Task<bool> CheckIfSyncStartedForGroupAsync(int userId, string fileGroupName)
+        {
+            SyncContext syncContext;
+            await _createDeleteLock.WaitAsync();
+            try
+            {
+                int syncId;
+                if (_usersGroupsWhithActiveSyncsPairs.ContainsKey(userId))
+                {
+                    GroupInfo group = _usersGroupsWhithActiveSyncsPairs[userId].Where(e => e.GroupName == fileGroupName).FirstOrDefault();
+                    if (group.Equals(default(GroupInfo)))
+                    {
+                        return false;
+                    }
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+
+            }
+            finally
+            {
+                _createDeleteLock.Release();
+            }
         }
 
         enum LockTypes
