@@ -25,13 +25,16 @@ namespace Files_cloud_manager.Client.Models
         public string PathToExe { get; set; }
         public string PathToData { get; set; }
         public string GroupName { get; }
-        public ReadOnlyObservableCollection<FileDifferenceModel> FileDifferences { get; private set; }
 
+        public ReadOnlyObservableCollection<FileDifferenceModel> FileDifferences { get; private set; }
+        private ObservableCollection<FileDifferenceModel> _fileDifferences;
         private bool _isFileDiffCollectionSync = false;
 
-        private ObservableCollection<FileDifferenceModel> _fileDifferences;
+        private int _syncId = -1;
 
         private SemaphoreSlim _fileDifferencesCollectionLock = new SemaphoreSlim(1);
+
+
 
         private IServerConnectionService _connectionService;
         private IFileHashCheckerService _fileHashCheckerService;
@@ -43,7 +46,6 @@ namespace Files_cloud_manager.Client.Models
             string pathToData,
             string groupName)
         {
-
             _connectionService = connectionService;
             _fileHashCheckerService = fileHashCheckerService;
 
@@ -54,8 +56,6 @@ namespace Files_cloud_manager.Client.Models
             PathToData = pathToData;
             GroupName = groupName;
 
-
-
             BindingOperations.EnableCollectionSynchronization(FileDifferences, new object());
         }
 
@@ -63,7 +63,7 @@ namespace Files_cloud_manager.Client.Models
         public async Task<bool> SynchronizeFilesAsync(SyncDirection syncDirection, CancellationToken cancellationToken)
         {
             // todo добавить cancelToken.
-           
+
             if (!_isFileDiffCollectionSync)
             {
                 await CompareLocalFilesToServerAsync(cancellationToken).ConfigureAwait(false);
@@ -87,17 +87,19 @@ namespace Files_cloud_manager.Client.Models
                 {
                     throw new Exception("Ошибка при отправке файлов");
                 }
-                if (!await _connectionService.EndSyncAsync().ConfigureAwait(false))
+                if (!await _connectionService.EndSyncAsync(_syncId).ConfigureAwait(false))
                 {
                     throw new Exception("Ошибка при завершении синхронизации");
                 }
                 _fileDifferences.Clear();
                 _isFileDiffCollectionSync = false;
+                _syncId = -1;
             }
             catch
             {
-                await _connectionService.RollBackSyncAsync().ConfigureAwait(false);
+                await _connectionService.RollBackSyncAsync(_syncId).ConfigureAwait(false);
                 _isFileDiffCollectionSync = false;
+                _syncId = -1;
                 if (_fileDifferences.Count != 0)
                     _fileDifferences.Clear();
                 throw;
@@ -111,10 +113,14 @@ namespace Files_cloud_manager.Client.Models
 
         private async Task<bool> EnsureSyncStartedAsync()
         {
-            if (!_connectionService.IsSyncStarted)
+            if (!_connectionService.IsLoogedIn)
             {
-                await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
-                if (!_connectionService.IsSyncStarted)
+                throw new Exception("ConnectionService не имеет сессии");
+            }
+            if (_syncId == -1)
+            {
+                _syncId = await _connectionService.StartSynchronizationAsync(GroupName).ConfigureAwait(false);
+                if (_syncId == -1)
                 {
                     IEnumerable<FileInfoGroupDTO> fileInfoGroups = await _connectionService.GetFileInfoGroupsAsync().ConfigureAwait(false);
                     if (fileInfoGroups.Any(e => e.Name == GroupName))
@@ -132,7 +138,12 @@ namespace Files_cloud_manager.Client.Models
 
         public async Task<bool> TryRollBackSyncByNameAsync()
         {
-            return await _connectionService.RollBackSyncAsync(GroupName).ConfigureAwait(false);
+            var res= await _connectionService.RollBackSyncAsync(GroupName).ConfigureAwait(false);
+            if (res)
+            {
+                _syncId = -1;
+            }
+            return res;
         }
 
         public async Task<ReadOnlyObservableCollection<FileDifferenceModel>> CompareLocalFilesToServerAsync(CancellationToken cancellationToken)
@@ -148,7 +159,7 @@ namespace Files_cloud_manager.Client.Models
                 if (_fileDifferences.Count != 0)
                     _fileDifferences.Clear();
                 _isFileDiffCollectionSync = false;
-                ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync().ConfigureAwait(false));
+                ICollection<FileInfoDTO> serverFiles = (await _connectionService.GetFilesAsync(_syncId).ConfigureAwait(false));
                 if (serverFiles is not null)
                 {
                     await foreach (var item in _fileHashCheckerService.GetHashDifferencesAsync(serverFiles, PathToData, cancellationToken).ConfigureAwait(false))
@@ -169,11 +180,12 @@ namespace Files_cloud_manager.Client.Models
             }
             finally
             {
-                await _connectionService.RollBackSyncAsync().ConfigureAwait(false);
+                await _connectionService.RollBackSyncAsync(_syncId).ConfigureAwait(false);
+                _syncId = -1;
                 _fileDifferencesCollectionLock.Release();
+
             }
         }
-
 
         private async Task<bool> SynchronizeFileAsync(SyncDirection direction, FileDifferenceModel file, CancellationToken cancellationToken)
         {
@@ -186,7 +198,7 @@ namespace Files_cloud_manager.Client.Models
                     }
                     if (file.State != FileState.ClientOnly)
                     {
-                        Stream stream = await _connectionService.DonwloadFileAsync(file.File.RelativePath, cancellationToken).ConfigureAwait(false);
+                        Stream stream = await _connectionService.DonwloadFileAsync(_syncId, file.File.RelativePath, cancellationToken).ConfigureAwait(false);
 
                         Directory.GetParent(GetFullDataPath(file.File.RelativePath))!.Create();
 
@@ -196,11 +208,10 @@ namespace Files_cloud_manager.Client.Models
                         }
                     }
                     return true;
-                    break;
                 case SyncDirection.FromClient:
                     if (file.State == FileState.ServerOnly)
                     {
-                        return await _connectionService.DeleteFileAsync(file.File.RelativePath).ConfigureAwait(false);
+                        return await _connectionService.DeleteFileAsync(_syncId, file.File.RelativePath).ConfigureAwait(false);
                     }
                     else
                     {
@@ -211,13 +222,11 @@ namespace Files_cloud_manager.Client.Models
                             4096,
                             true))
                         {
-                            return await _connectionService.CreateOrUpdateFileAsync(file.File.RelativePath, fileStream, cancellationToken).ConfigureAwait(false);
+                            return await _connectionService.CreateOrUpdateFileAsync(_syncId, file.File.RelativePath, fileStream, cancellationToken).ConfigureAwait(false);
                         }
                     }
-                    break;
                 default:
                     return false;
-                    break;
             }
         }
 
@@ -230,10 +239,10 @@ namespace Files_cloud_manager.Client.Models
 
         public void Dispose()
         {
-            _connectionService.RollBackSyncAsync().RunSynchronously();
+            _connectionService.RollBackSyncAsync(_syncId).Wait();
             _connectionService.Dispose();
         }
-      
+
         // todo сделать проверку имени файла лучше
         private bool CheckIfFileNameIsValid(string name)
         {

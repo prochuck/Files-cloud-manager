@@ -26,9 +26,9 @@ namespace Files_cloud_manager.Client.Models.DTO
             GroupName = groupName;
         }
 
-        public string PathToExe { get; set; }
-        public string PathToData { get; set; }
-        public string GroupName { get; set; }
+        public string? PathToExe { get; set; }
+        public string? PathToData { get; set; }
+        public string? GroupName { get; set; }
 
 
     }

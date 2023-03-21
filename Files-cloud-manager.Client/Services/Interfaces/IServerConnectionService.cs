@@ -10,7 +10,6 @@ namespace Files_cloud_manager.Client.Services.Interfaces
     internal interface IServerConnectionService : IDisposable
     {
         public bool IsLoogedIn { get; }
-        public bool IsSyncStarted { get; }
         /// <summary>
         /// Отправить файл на сервер. Если файл существует на сервере, он будет обновлён.
         /// </summary>
@@ -18,29 +17,29 @@ namespace Files_cloud_manager.Client.Services.Interfaces
         /// <param name="filePath">путь файла, по которому он будет сохранён на сервере.</param>
         /// <param name="file">Файл.</param>
         /// <returns></returns>
-        Task<bool> CreateOrUpdateFileAsync(string filePath, Stream file, CancellationToken cancellationToken);
+        Task<bool> CreateOrUpdateFileAsync(int syncId,string filePath, Stream file, CancellationToken cancellationToken);
         /// <summary>
         /// Удаление файла на сервере.
         /// </summary>
         /// <param name="filePath">путь файла на сервере.</param>
         /// <returns></returns>
-        Task<bool> DeleteFileAsync(string filePath);
+        Task<bool> DeleteFileAsync(int syncId,string filePath);
         /// <summary>
         /// Скачать файл с сервера
         /// </summary>   
         /// <param name="filePath">путь файла на сервере.</param>
         /// <returns></returns>
-        Task<Stream> DonwloadFileAsync(string filePath, CancellationToken cancellationToken);
+        Task<Stream> DonwloadFileAsync(int syncId,string filePath, CancellationToken cancellationToken);
         /// <summary>
         /// Закончить синхронизацию и применить изменения на сервере.
         /// </summary>
         /// <returns></returns>
-        Task<bool> EndSyncAsync();
+        Task<bool> EndSyncAsync(int syncId);
         /// <summary>
         /// Получить информацию о файлах на сервере. 
         /// </summary>
         /// <returns>Список файлов на сервере. В т.ч. их пути и хэши</returns>
-        Task<ICollection<FileInfoDTO>> GetFilesAsync();
+        Task<ICollection<FileInfoDTO>> GetFilesAsync(int syncId);
         /// <summary>
         /// Залогиниться на сервере.
         /// </summary>
@@ -63,13 +62,13 @@ namespace Files_cloud_manager.Client.Services.Interfaces
         /// Закончить синхронизацию и отменить изменения.
         /// </summary>
         /// <returns></returns>
-        Task<bool> RollBackSyncAsync();
+        Task<bool> RollBackSyncAsync(int syncId);
         /// <summary>
         /// Начать синхронизацию файлов между клиентом и сервером
         /// </summary>
         /// <param name="groupName"></param>
         /// <returns>Начата ли синхронизация</returns>
-        Task<bool> StartSynchronizationAsync(string groupName);
+        Task<int> StartSynchronizationAsync(string groupName);
         /// <summary>
         /// Получить список групп файлов для текущего пользователя.
         /// </summary>
