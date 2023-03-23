@@ -52,13 +52,6 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-        public GroupCreationViewModel ShowGroupCreationDialog(List<FileInfoGroupDTO> fileInfoGroupDTOs)
-        {
-            return ShowDialog<GroupCreationViewModel>(fileInfoGroupDTOs);
-        }
-        public LoginViewModel ShowLoginDialog()
-        {
-            return ShowDialog<LoginViewModel>();
-        }
+       
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Files_cloud_manager.Client.Configs;
+using Files_cloud_manager.Client.Extentions;
 using Files_cloud_manager.Client.Models;
 using Files_cloud_manager.Client.Services;
 using Files_cloud_manager.Client.Services.Interfaces;
@@ -32,7 +33,7 @@ namespace Files_cloud_manager.Client
         IServiceScope _scope;
         public MainWindow()
         {
-
+            // todo вынести конфиги в отдельные файл
             // todo перенести.
             var services = new ServiceCollection();
             services.AddSingleton<DialogServiceConfig>(e => new DialogServiceConfig() { MainWindow = this });
@@ -54,10 +55,8 @@ namespace Files_cloud_manager.Client
             var a = _scope.ServiceProvider.GetRequiredService<ModelFactory>();
 
             var thing = _scope.ServiceProvider.GetRequiredService<IDialogService>();
-            thing.RegisterDialog<LoginViewModel, LoginView>();
-            thing.RegisterDialog<GroupCreationViewModel, GroupCreationView>();
-
-            
+            thing.RegisterLoginDialog();
+            thing.RegisterGroupCreationDialog();
 
             InitializeComponent();
         }
