@@ -10,6 +10,7 @@ using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace Files_cloud_manager.Client.Extentions
 {
@@ -24,13 +25,16 @@ namespace Files_cloud_manager.Client.Extentions
             service.RegisterDialog<LoginViewModel, LoginView>();
         }
 
-        public static GroupCreationViewModel ShowGroupCreationDialog(this IDialogService service, List<FileInfoGroupDTO> fileInfoGroupDTOs)
-        {      
-            return service.ShowDialog<GroupCreationViewModel>(fileInfoGroupDTOs);
-        }      
-        public static LoginViewModel ShowLoginDialog(this IDialogService service)
+        public static GroupCreationViewModel ShowGroupCreationDialog(this IDialogService service, 
+            List<FileInfoGroupDTO> fileInfoGroupDTOs,
+            Window? owner=null)
         {
-            return service.ShowDialog<LoginViewModel>();
+            return service.ShowDialog<GroupCreationViewModel>(owner, fileInfoGroupDTOs);
+        }
+        public static LoginViewModel ShowLoginDialog(this IDialogService service,
+            Window? owner = null)
+        {
+            return service.ShowDialog<LoginViewModel>(owner);
         }
     }
 }

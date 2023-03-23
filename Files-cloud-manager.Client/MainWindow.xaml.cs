@@ -31,40 +31,19 @@ namespace Files_cloud_manager.Client
     public partial class MainWindow : Window
     {
         IServiceScope _scope;
-        public MainWindow()
+        public MainWindow(IServiceProvider provider)
         {
             // todo вынести конфиги в отдельные файл
             // todo перенести.
-            var services = new ServiceCollection();
-            services.AddSingleton<DialogServiceConfig>(e => new DialogServiceConfig() { MainWindow = this });
-            services.AddSingleton<ProgramListCaretakerConfig>(e => new ProgramListCaretakerConfig()
-            {
-                PathToSaveFile = "C:\\programsM\\file\\groups.json"
-            });
-
-            services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
-            services.AddTransient<IServerConnectionService, ServerConnectionService>();
-            services.AddSingleton<IDialogService, DialogService>();
-            services.AddTransient<IProgramListCaretaker, ProgramListCaretaker>();
-            services.AddSingleton<ModelFactory>();
-
-            var _provider = services.BuildServiceProvider();
-
-            _scope = _provider.CreateScope();
-
-            var a = _scope.ServiceProvider.GetRequiredService<ModelFactory>();
-
-            var thing = _scope.ServiceProvider.GetRequiredService<IDialogService>();
-            thing.RegisterLoginDialog();
-            thing.RegisterGroupCreationDialog();
-
+            _scope = provider.CreateScope();
             InitializeComponent();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            var thing = _scope.ServiceProvider.GetRequiredService<IDialogService>();
-            var res = thing.ShowLoginDialog();
+            IDialogService thing = _scope.ServiceProvider.GetRequiredService<IDialogService>();
+            ModelFactory modelFactory = _scope.ServiceProvider.GetRequiredService<ModelFactory>();
+            var res = thing.ShowLoginDialog(this);
             if (res is null)
             {
                 this.Close();

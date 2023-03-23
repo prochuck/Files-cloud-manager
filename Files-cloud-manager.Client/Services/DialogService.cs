@@ -16,13 +16,11 @@ namespace Files_cloud_manager.Client.Services
     internal class DialogService : IDialogService
     {
         private IServiceProvider _serviceProvider;
-        private Window _mainWindow;
 
         private Dictionary<Type, Type> _viewModelViewPairs = new Dictionary<Type, Type>();
 
-        public DialogService(DialogServiceConfig config, IServiceProvider serviceProvider)
+        public DialogService(IServiceProvider serviceProvider)
         {
-            _mainWindow = config.MainWindow;
             _serviceProvider = serviceProvider;
         }
 
@@ -31,13 +29,14 @@ namespace Files_cloud_manager.Client.Services
             _viewModelViewPairs.Add(typeof(TViewModel), typeof(TView));
         }
 
-        public T ShowDialog<T>(params object[] parameters) where T : ViewModelBase
+        public T ShowDialog<T>(Window? ownerWindow, params object[] parameters) where T : ViewModelBase
         {
             Window view;
-
             view = (Window)ActivatorUtilities.CreateInstance(_serviceProvider, _viewModelViewPairs[typeof(T)], parameters);
 
-            view.Owner = _mainWindow;
+            if (ownerWindow is not null)
+                view.Owner = ownerWindow;
+            view.Focus();
             if (view.ShowDialog() is bool res && res)
             {
                 if (view.DataContext is not T)
@@ -52,6 +51,6 @@ namespace Files_cloud_manager.Client.Services
             }
         }
 
-       
+
     }
 }
