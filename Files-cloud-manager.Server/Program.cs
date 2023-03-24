@@ -17,9 +17,17 @@ using Microsoft.Extensions.Configuration;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+
+builder.WebHost.ConfigureKestrel(
+    e => e.Listen(IPAddress.Any, builder.Configuration.GetValue<int>("ListenPort"), e =>
+        e.UseHttps(builder.Configuration.GetValue<string>("CertPath"),
+        builder.Configuration.GetValue<string>("CertPassword"))
+    ));
 // todo Добавить identeti?
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDBContext>(e => e.UseSqlServer(builder.Configuration.GetConnectionString("Files-cloud-manager-db")));
@@ -60,8 +68,6 @@ builder.Services.AddSwaggerGen(o =>
         return apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null;
     });
 });
-string baseUrl = builder.Configuration.GetValue<string>("BaseUrl"); 
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -73,13 +79,12 @@ if (app.Environment.IsDevelopment())
         o.DisplayOperationId();
     });
 }
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.Urls.Add(baseUrl);
 
 app.Run();
