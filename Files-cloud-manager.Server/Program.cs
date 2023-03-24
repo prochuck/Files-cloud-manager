@@ -20,8 +20,7 @@ using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// todo Добавить identeti?
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDBContext>(e => e.UseSqlServer(builder.Configuration.GetConnectionString("Files-cloud-manager-db")));
 
@@ -61,6 +60,7 @@ builder.Services.AddSwaggerGen(o =>
         return apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null;
     });
 });
+string baseUrl = builder.Configuration.GetValue<string>("BaseUrl"); 
 
 var app = builder.Build();
 
@@ -79,5 +79,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.Urls.Add(baseUrl);
 
 app.Run();
