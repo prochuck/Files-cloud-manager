@@ -11,10 +11,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Files_cloud_manager.Client.Extentions;
-using static System.Formats.Asn1.AsnWriter;
+
+using Microsoft.Extensions.Configuration;
+using System.IO;
+using Files_cloud_manager.Client.Commands;
 
 namespace Files_cloud_manager.Client
 {
+    //todo сделать логин асинхронным.
+
     /// <summary>
     /// Interaction logic for App.xaml
     /// </summary>
@@ -28,13 +33,12 @@ namespace Files_cloud_manager.Client
             serviceProvider = services.BuildServiceProvider();
         }
 
-        private void ConfigureServices(ServiceCollection services)
+        private void ConfigureServices(IServiceCollection services)
         {
-            
-            services.AddSingleton<ProgramListCaretakerConfig>(e => new ProgramListCaretakerConfig()
-            {
-            });
+            IConfiguration config = AddCondfiguration();
 
+
+            services.AddSingleton<ProgramListCaretakerConfig>(e => config.GetProgramListCaretakerConfig());
             services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
             services.AddTransient<IServerConnectionService, ServerConnectionService>();
             services.AddTransient<IProgramListCaretaker, ProgramListCaretaker>();
@@ -50,6 +54,19 @@ namespace Files_cloud_manager.Client
                 );
 
             services.AddSingleton<MainWindow>();
+        }
+
+        private IConfiguration AddCondfiguration()
+        {
+            var builder = new ConfigurationBuilder()
+               .SetBasePath(Directory.GetCurrentDirectory())
+               .AddJsonFile("appsettings.json", false);
+
+#if DEBUG
+            builder.AddJsonFile("appsettings.Development.json", true);
+#endif
+
+            return builder.Build();
         }
 
         protected override void OnStartup(StartupEventArgs e)
