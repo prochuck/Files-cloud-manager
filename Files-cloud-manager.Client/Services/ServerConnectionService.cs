@@ -66,6 +66,12 @@ namespace Files_cloud_manager.Client.Services
                     await _swaggerClient.LoginAsync(login, password).ConfigureAwait(false);
                     TimeSpan timeBeforeExpiration = _cookieContainer.GetAllCookies().Where(e => e.Name == "FileCloudCoockie").First().Expires.Subtract(DateTime.Now);
                     _tokenRefreshTimer = new Timer(timeBeforeExpiration.Divide(2).TotalMilliseconds);
+                    _tokenRefreshTimer.Elapsed += (s, e) =>
+                    {
+                        this.RefreshCoockie().Wait();
+                        _tokenRefreshTimer.Start();
+                    };
+                    _tokenRefreshTimer.Start();
                     IsLoogedIn = true;
                     return true;
                 }
