@@ -39,6 +39,8 @@ namespace Files_cloud_manager.Client
 
 
             services.AddSingleton<ProgramListCaretakerConfig>(e => config.GetProgramListCaretakerConfig());
+            services.AddSingleton<ServerConnectionConfig>(e => config.GetServerConnectionConfig());
+
             services.AddTransient<IFileHashCheckerService, FileHashCheckerService>();
             services.AddTransient<IServerConnectionService, ServerConnectionService>();
             services.AddTransient<IProgramListCaretaker, ProgramListCaretaker>();

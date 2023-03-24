@@ -27,6 +27,9 @@ namespace Files_cloud_manager.Client.Extentions
         {
             return config.GetConfig<ProgramListCaretakerConfig>();
         }
-
+        public static ServerConnectionConfig GetServerConnectionConfig(this IConfiguration config)
+        {
+            return config.GetConfig<ServerConnectionConfig>();
+        }
     }
 }

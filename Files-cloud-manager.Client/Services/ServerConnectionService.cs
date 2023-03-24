@@ -1,4 +1,5 @@
 ﻿using FileCloudAPINameSpace;
+using Files_cloud_manager.Client.Configs;
 using Files_cloud_manager.Client.Services.Interfaces;
 using Microsoft.VisualStudio.Threading;
 using System;
@@ -24,7 +25,6 @@ namespace Files_cloud_manager.Client.Services
 
 
 
-        private Uri _baseAddress = new Uri("https://localhost:7216");
         private CookieContainer _cookieContainer;
         private HttpClient _httpClient;
         private FileCloudAPIClient _swaggerClient;
@@ -34,11 +34,11 @@ namespace Files_cloud_manager.Client.Services
 
 
 
-        public ServerConnectionService()
+        public ServerConnectionService(ServerConnectionConfig config)
         {
             _cookieContainer = new CookieContainer();
             _httpClient = new System.Net.Http.HttpClient(new HttpClientHandler() { CookieContainer = _cookieContainer });
-            _swaggerClient = new FileCloudAPIClient("https://localhost:7216", _httpClient);
+            _swaggerClient = new FileCloudAPIClient(config.BaseUrl, _httpClient);
             _coockieLock = new AsyncReaderWriterLock();
         }
 
