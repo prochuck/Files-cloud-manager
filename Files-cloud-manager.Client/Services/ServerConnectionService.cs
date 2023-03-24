@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Timer = System.Timers.Timer;
@@ -37,7 +38,19 @@ namespace Files_cloud_manager.Client.Services
         public ServerConnectionService(ServerConnectionConfig config)
         {
             _cookieContainer = new CookieContainer();
-            _httpClient = new System.Net.Http.HttpClient(new HttpClientHandler() { CookieContainer = _cookieContainer });
+            _httpClient = new System.Net.Http.HttpClient(new HttpClientHandler()
+            {
+                CookieContainer = _cookieContainer,
+                ServerCertificateCustomValidationCallback = (request, certificate, chain, errors) =>
+                {
+                    if (errors == SslPolicyErrors.RemoteCertificateChainErrors) return true;
+                    if (errors != SslPolicyErrors.None) return false;
+
+                    return true;
+                }
+            });
+
+
             _swaggerClient = new FileCloudAPIClient(config.BaseUrl, _httpClient);
             _coockieLock = new AsyncReaderWriterLock();
         }
