@@ -91,11 +91,7 @@ namespace Files_cloud_manager.Client.Models
             UpdateFileGroups();
             lock (_fileGroups)
             {
-                var a = Enumerable.Except(memento.ProgramsList.Select(e => e.GroupName), _fileGroups.Select(e => e.Name));
-                if (a.Count() != 0)
-                {
-                    throw new Exception($"Группы с именами: {string.Join(" ", a)} - не существуют на сервере");
-                }
+                memento.ProgramsList = memento.ProgramsList.IntersectBy(_fileGroups.Select(e => e.Name), e => e.GroupName).ToList();
             }
 
             lock (_programsList)
