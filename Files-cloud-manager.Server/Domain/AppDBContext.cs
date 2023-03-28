@@ -12,26 +12,29 @@ namespace Files_cloud_manager.Server.Domain
         public DbSet<User> Users { get; set; }
         public DbSet<FileInfo> FileInfos { get; set; }
         public DbSet<FileInfoGroup> FilesInfoGroups { get; set; }
-        public enum RolesEnum
-        {
-            Admin,
-            User
-        }
+
+        private IHashAlgorithmFactory _hashAlgorithmFactory { get; set; }
 
         public AppDBContext(DbContextOptions options, IHashAlgorithmFactory hashFactory) : base(options)
         {
-            if (Database.EnsureCreated())
-            {
-                foreach (var item in Enum.GetValues(typeof(RolesEnum)))
+            _hashAlgorithmFactory = hashFactory;
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Role>().HasData(
+                new Role() { Id = 1, RoleName = "Admin" },
+                new Role() { Id = 2, RoleName = "User" });
+            modelBuilder.Entity<User>().HasData(
+                new User()
                 {
-                    Roles.Add(new Role() { RoleName = item.ToString() });
-                }
-
-                Users.Add(new User() { RoleId = 1, Login = "admin", PasswordHash = hashFactory.Create().ComputeHash("123".Select(e => (byte)e).ToArray()), UserFoldersPath = "admin" });
-                this.SaveChanges();
-            }
-            this.SaveChanges();
-
+                    Id = 1, 
+                    UserFoldersPath="admin",
+                    Login = "admin",
+                    PasswordHash = _hashAlgorithmFactory.Create().ComputeHash("123".Select(e => (byte)e).ToArray()),
+                    RoleId = 1,
+                });
         }
     }
 }
