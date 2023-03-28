@@ -60,7 +60,7 @@ namespace Files_cloud_manager.Server.Controllers
         [HttpPost]
         [RequireHttps]
         [Authorize(Roles = "Admin")]
-        public IActionResult RegisterUser(string login, string password, int roleId)
+        public IActionResult RegisterUser(string login, string password, string roleName)
         {
             if (!(login.Count() > 3 && login.Count() < 30 && login.All(c => char.IsLetterOrDigit(c))))
             {
@@ -74,12 +74,20 @@ namespace Files_cloud_manager.Server.Controllers
             {
                 return BadRequest("Логин занят");
             }
+
+            Role? role = _unitOfWork.RoleRepository.Get(e => e.RoleName == roleName).FirstOrDefault();
+
+            if (role is null)
+            {
+                return BadRequest($"Нет роли с именем {roleName}");
+            }
+
             _unitOfWork.UserRepository.Create(
                 new User()
                 {
                     Login = login,
                     PasswordHash = _hashAlgFactory.Create().ComputeHash(password.Select(e => (byte)e).ToArray()),
-                    RoleId = roleId,
+                    RoleId = role.Id,
                     UserFoldersPath = login
                 });
             _unitOfWork.Save();
@@ -135,14 +143,14 @@ namespace Files_cloud_manager.Server.Controllers
         }
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public IActionResult ChangeRole(string userLogin, int roleId)
+        public IActionResult ChangeRole(string userLogin, string roleName)
         {
             User? user = _unitOfWork.UserRepository.Find(userLogin);
             if (user is null)
             {
                 return BadRequest("Запрошенный пользователь не существует.");
             }
-            Role? newRole = _unitOfWork.RoleRepository.Get(e => e.Id == roleId).FirstOrDefault();
+            Role? newRole = _unitOfWork.RoleRepository.Get(e => e.RoleName == roleName).FirstOrDefault();
             if (newRole is null)
             {
                 return BadRequest("Запрошена не существующая роль.");

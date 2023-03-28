@@ -69,11 +69,10 @@
             }
           },
           {
-            "name": "roleId",
+            "name": "roleName",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             }
           }
         ],
@@ -179,11 +178,10 @@
             }
           },
           {
-            "name": "roleId",
+            "name": "roleName",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             }
           }
         ],
